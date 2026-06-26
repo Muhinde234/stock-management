@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_admin
-from app.models.enums import ProductStatus
+from app.models.enums import ProductStatus, StockStatus
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.services import product_service
 from app.services.exceptions import ConflictError, NotFoundError
@@ -23,12 +23,19 @@ def list_products(
     search: str | None = None,
     category_id: int | None = None,
     status: ProductStatus | None = None,
+    stock_status: StockStatus | None = None,
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
 ):
     return product_service.list_products(
-        db, search=search, category_id=category_id, status=status, skip=skip, limit=limit
+        db,
+        search=search,
+        category_id=category_id,
+        status=status,
+        stock_status=stock_status,
+        skip=skip,
+        limit=limit,
     )
 
 

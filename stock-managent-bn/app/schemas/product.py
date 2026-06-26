@@ -1,9 +1,9 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from app.models.enums import ProductStatus
+from app.models.enums import ProductStatus, StockStatus
 from app.schemas.category import CategoryRead
 
 
@@ -47,3 +47,8 @@ class ProductRead(ProductBase):
     created_at: datetime
     updated_at: datetime
     category: CategoryRead | None = None
+
+    @computed_field
+    @property
+    def stock_status(self) -> StockStatus:
+        return StockStatus.OUT_OF_STOCK if self.quantity_in_stock <= 0 else StockStatus.IN_STOCK
