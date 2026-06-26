@@ -1,11 +1,10 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CategoryBase(BaseModel):
-    name: str
-    description: str | None = None
+    name: str = Field(alias="categoryName")
 
 
 class CategoryCreate(CategoryBase):
@@ -13,12 +12,11 @@ class CategoryCreate(CategoryBase):
 
 
 class CategoryUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
+    name: str | None = Field(default=None, alias="categoryName")
 
 
 class CategoryRead(CategoryBase):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: int
     created_at: datetime
