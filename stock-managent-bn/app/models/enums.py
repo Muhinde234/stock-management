@@ -17,3 +17,8 @@ class SaleStatus(str, enum.Enum):
     COMPLETED = "completed"
     VOIDED = "voided"
     REFUNDED = "refunded"
+
+
+class UserRole(str, enum.Enum):
+    ADMIN = "admin"
+    CASHIER = "cashier"
