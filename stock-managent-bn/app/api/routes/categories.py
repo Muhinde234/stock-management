@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_db, require_admin
 from app.schemas.category import CategoryCreate, CategoryRead
 from app.services import category_service
 from app.services.exceptions import ConflictError
 
-router = APIRouter(prefix="/categories", tags=["categories"])
+router = APIRouter(prefix="/categories", tags=["categories"], dependencies=[Depends(require_admin)])
 
 
 @router.post("", response_model=CategoryRead, status_code=201)
