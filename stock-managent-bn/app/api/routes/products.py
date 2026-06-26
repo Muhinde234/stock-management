@@ -4,13 +4,13 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_db, require_admin
 from app.models.enums import ProductStatus
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.services import product_service
 from app.services.exceptions import ConflictError, NotFoundError
 
-router = APIRouter(prefix="/products", tags=["products"])
+router = APIRouter(prefix="/products", tags=["products"], dependencies=[Depends(require_admin)])
 
 UPLOAD_DIR = Path("static/uploads")
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
