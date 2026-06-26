@@ -5,7 +5,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class CategoryBase(BaseModel):
     name: str = Field(alias="categoryName")
-    description: str | None = None
 
 
 class CategoryCreate(CategoryBase):
@@ -14,7 +13,6 @@ class CategoryCreate(CategoryBase):
 
 class CategoryUpdate(BaseModel):
     name: str | None = Field(default=None, alias="categoryName")
-    description: str | None = None
 
 
 class CategoryRead(CategoryBase):
