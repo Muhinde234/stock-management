@@ -1,0 +1,110 @@
+import random
+from datetime import datetime, timezone
+
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
+
+from app.models.enums import ProductStatus
+from app.models.product import Product
+from app.schemas.product import ProductCreate, ProductUpdate
+from app.services.exceptions import ConflictError, NotFoundError
+
+
+def _generate_barcode(db: Session) -> str:
+    while True:
+        candidate = "".join(str(random.randint(0, 9)) for _ in range(12))
+        exists = db.execute(select(Product.id).where(Product.barcode == candidate)).first()
+        if not exists:
+            return candidate
+
+
+def create_product(db: Session, data: ProductCreate) -> Product:
+    if db.execute(select(Product.id).where(Product.sku == data.sku)).first():
+        raise ConflictError(f"SKU '{data.sku}' already exists")
+    if data.barcode and db.execute(select(Product.id).where(Product.barcode == data.barcode)).first():
+        raise ConflictError(f"Barcode '{data.barcode}' already exists")
+
+    product = Product(**data.model_dump())
+    if not product.barcode:
+        product.barcode = _generate_barcode(db)
+
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+def get_product(db: Session, product_id: int) -> Product:
+    product = db.get(Product, product_id)
+    if product is None or product.is_deleted:
+        raise NotFoundError(f"Product {product_id} not found")
+    return product
+
+
+def get_product_by_barcode(db: Session, barcode: str) -> Product:
+    product = db.execute(
+        select(Product).where(Product.barcode == barcode, Product.is_deleted.is_(False))
+    ).scalar_one_or_none()
+    if product is None:
+        raise NotFoundError(f"Product with barcode '{barcode}' not found")
+    return product
+
+
+def list_products(
+    db: Session,
+    *,
+    search: str | None = None,
+    category_id: int | None = None,
+    status: ProductStatus | None = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> list[Product]:
+    stmt = select(Product).where(Product.is_deleted.is_(False))
+
+    if search:
+        pattern = f"%{search}%"
+        stmt = stmt.where(
+            or_(Product.name.ilike(pattern), Product.sku.ilike(pattern), Product.barcode.ilike(pattern))
+        )
+    if category_id is not None:
+        stmt = stmt.where(Product.category_id == category_id)
+    if status is not None:
+        stmt = stmt.where(Product.status == status)
+
+    stmt = stmt.order_by(Product.name).offset(skip).limit(limit)
+    return list(db.execute(stmt).scalars().all())
+
+
+def update_product(db: Session, product_id: int, data: ProductUpdate) -> Product:
+    product = get_product(db, product_id)
+    updates = data.model_dump(exclude_unset=True)
+
+    if "sku" in updates and updates["sku"] != product.sku:
+        if db.execute(select(Product.id).where(Product.sku == updates["sku"])).first():
+            raise ConflictError(f"SKU '{updates['sku']}' already exists")
+    if "barcode" in updates and updates["barcode"] != product.barcode and updates["barcode"] is not None:
+        if db.execute(select(Product.id).where(Product.barcode == updates["barcode"])).first():
+            raise ConflictError(f"Barcode '{updates['barcode']}' already exists")
+
+    for field, value in updates.items():
+        setattr(product, field, value)
+
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+def soft_delete_product(db: Session, product_id: int) -> None:
+    product = get_product(db, product_id)
+    product.is_deleted = True
+    product.deleted_at = datetime.now(timezone.utc)
+    product.status = ProductStatus.INACTIVE
+    db.commit()
+
+
+def set_product_image(db: Session, product_id: int, image_url: str) -> Product:
+    product = get_product(db, product_id)
+    product.image_url = image_url
+    db.commit()
+    db.refresh(product)
+    return product
