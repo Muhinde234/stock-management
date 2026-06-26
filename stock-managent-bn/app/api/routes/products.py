@@ -1,7 +1,4 @@
-from pathlib import Path
-from uuid import uuid4
-
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_admin
@@ -11,9 +8,6 @@ from app.services import product_service
 from app.services.exceptions import ConflictError, NotFoundError
 
 router = APIRouter(prefix="/products", tags=["products"], dependencies=[Depends(require_admin)])
-
-UPLOAD_DIR = Path("static/uploads")
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 
 @router.post("", response_model=ProductRead, status_code=201)
@@ -38,7 +32,7 @@ def list_products(
     )
 
 
-@router.get("/barcode/{barcode}", response_model=ProductRead)
+@router.get("/barcode", response_model=ProductRead)
 def get_product_by_barcode(barcode: str, db: Session = Depends(get_db)):
     try:
         return product_service.get_product_by_barcode(db, barcode)
@@ -70,23 +64,3 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
         product_service.soft_delete_product(db, product_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@router.post("/{product_id}/image", response_model=ProductRead)
-def upload_product_image(product_id: int, file: UploadFile, db: Session = Depends(get_db)):
-    if file.content_type not in ALLOWED_IMAGE_TYPES:
-        raise HTTPException(status_code=415, detail="Unsupported image type")
-
-    try:
-        product_service.get_product(db, product_id)
-    except NotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    extension = Path(file.filename or "").suffix
-    filename = f"{uuid4().hex}{extension}"
-    destination = UPLOAD_DIR / filename
-    with destination.open("wb") as buffer:
-        buffer.write(file.file.read())
-
-    return product_service.set_product_image(db, product_id, f"/static/uploads/{filename}")

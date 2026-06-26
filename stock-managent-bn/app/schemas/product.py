@@ -12,12 +12,11 @@ class ProductBase(BaseModel):
     description: str | None = None
     category_id: int
     sku: str
-    barcode: str | None = None
+    barcode: str
     buying_price: Decimal = Field(ge=0)
     selling_price: Decimal = Field(ge=0)
     quantity_in_stock: int = Field(default=0, ge=0)
     minimum_stock: int = Field(default=0, ge=0)
-    image_url: str | None = None
     expiry_date: date | None = None
     status: ProductStatus = ProductStatus.ACTIVE
 
@@ -36,7 +35,6 @@ class ProductUpdate(BaseModel):
     selling_price: Decimal | None = Field(default=None, ge=0)
     quantity_in_stock: int | None = Field(default=None, ge=0)
     minimum_stock: int | None = Field(default=None, ge=0)
-    image_url: str | None = None
     expiry_date: date | None = None
     status: ProductStatus | None = None
 

@@ -1,4 +1,3 @@
-import random
 from datetime import datetime, timezone
 
 from sqlalchemy import or_, select
@@ -10,24 +9,13 @@ from app.schemas.product import ProductCreate, ProductUpdate
 from app.services.exceptions import ConflictError, NotFoundError
 
 
-def _generate_barcode(db: Session) -> str:
-    while True:
-        candidate = "".join(str(random.randint(0, 9)) for _ in range(12))
-        exists = db.execute(select(Product.id).where(Product.barcode == candidate)).first()
-        if not exists:
-            return candidate
-
-
 def create_product(db: Session, data: ProductCreate) -> Product:
     if db.execute(select(Product.id).where(Product.sku == data.sku)).first():
         raise ConflictError(f"SKU '{data.sku}' already exists")
-    if data.barcode and db.execute(select(Product.id).where(Product.barcode == data.barcode)).first():
+    if db.execute(select(Product.id).where(Product.barcode == data.barcode)).first():
         raise ConflictError(f"Barcode '{data.barcode}' already exists")
 
     product = Product(**data.model_dump())
-    if not product.barcode:
-        product.barcode = _generate_barcode(db)
-
     db.add(product)
     db.commit()
     db.refresh(product)
@@ -100,11 +88,3 @@ def soft_delete_product(db: Session, product_id: int) -> None:
     product.deleted_at = datetime.now(timezone.utc)
     product.status = ProductStatus.INACTIVE
     db.commit()
-
-
-def set_product_image(db: Session, product_id: int, image_url: str) -> Product:
-    product = get_product(db, product_id)
-    product.image_url = image_url
-    db.commit()
-    db.refresh(product)
-    return product
