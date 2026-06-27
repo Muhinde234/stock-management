@@ -22,6 +22,7 @@ def create_product(data: ProductCreate, db: Session = Depends(get_db)):
 def list_products(
     search: str | None = None,
     category_id: int | None = None,
+    stock_id: int | None = None,
     status: ProductStatus | None = None,
     stock_status: StockStatus | None = None,
     skip: int = 0,
@@ -32,6 +33,7 @@ def list_products(
         db,
         search=search,
         category_id=category_id,
+        stock_id=stock_id,
         status=status,
         stock_status=stock_status,
         skip=skip,

@@ -14,6 +14,7 @@ class ProductBase(BaseModel):
     selling_price: Decimal = Field(alias="sellingPrice", ge=0)
     description: str | None = None
     category_id: int
+    stock_id: int
     quantity_in_stock: int = Field(default=0, ge=0)
     minimum_stock: int = Field(default=0, ge=0)
     expiry_date: date | None = None
@@ -32,6 +33,7 @@ class ProductUpdate(BaseModel):
     selling_price: Decimal | None = Field(default=None, alias="sellingPrice", ge=0)
     description: str | None = None
     category_id: int | None = None
+    stock_id: int | None = None
     sku: str | None = None
     barcode: str | None = None
     quantity_in_stock: int | None = Field(default=None, ge=0)
