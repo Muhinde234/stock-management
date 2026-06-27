@@ -2,6 +2,8 @@ import { api } from "./client";
 import type { Category } from "./categories";
 export type { Category };
 
+export type StockStatus = "in_stock" | "out_of_stock";
+
 export interface Product {
   id: number;
   name: string;
@@ -19,6 +21,7 @@ export interface Product {
   is_deleted?: boolean;
   created_at: string;
   updated_at?: string;
+  stock_status: StockStatus;       // backend-computed: in_stock | out_of_stock
 }
 
 export interface ProductPayload {
@@ -75,7 +78,7 @@ export const productsApi = {
   },
 
   update(id: number, payload: Partial<ProductPayload>) {
-    return api.put<Product>(`/products/${id}`, payload);
+    return api.patch<Product>(`/products/${id}`, payload);
   },
 
   delete(id: number) {

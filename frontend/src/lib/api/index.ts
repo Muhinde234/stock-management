@@ -15,16 +15,16 @@ export { categoriesApi } from "./categories";
 export type { Category } from "./categories";
 
 export { productsApi, parsePrice } from "./products";
-export type { Product, ProductPayload, GetProductsParams } from "./products";
+export type { Product, ProductPayload, GetProductsParams, StockStatus } from "./products";
 
 export { salesApi, getCashierIdFromToken } from "./sales";
-export type { SaleCreate, SaleRead, SaleItemCreate, PaymentMethod } from "./sales";
+export type { SaleCreate, SaleRead, SaleItemCreate, PaymentMethod, SaleStatus } from "./sales";
 
 export { inventoryApi } from "./inventory";
-export type {
-  StockMovement, StockMovementsResponse,
-  StockInPayload, StockAdjustPayload, TransferPayload,
-} from "./inventory";
+export type { StockMovementRead, StockMovementCreate, StockMovementStatus } from "./inventory";
+
+export { cashiersApi } from "./cashiers";
+export type { Cashier, CashierCreate } from "./cashiers";
 
 export { customersApi } from "./customers";
 export type { Customer, CustomersResponse, CustomerPayload } from "./customers";

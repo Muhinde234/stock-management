@@ -19,27 +19,29 @@ const PAGE_SIZE = 12;
 
 // ── Stock status helpers ──────────────────────────────────────────────────────
 
-function getStockStatus(p: Product) {
-  if (p.quantity_in_stock === 0) return "sold_out";
+// stock_status from backend: "in_stock" | "out_of_stock"
+// We keep "low" detection locally for the Low Stock warning card
+function getLocalStockLevel(p: Product): "low" | "ok" | "out" {
+  if (p.stock_status === "out_of_stock") return "out";
   if (p.quantity_in_stock <= p.minimum_stock) return "low";
-  return "in_stock";
+  return "ok";
 }
 
 function StockStatusBadge({ product }: { product: Product }) {
-  const st = getStockStatus(product);
-  if (st === "sold_out") return (
+  const level = getLocalStockLevel(product);
+  if (level === "out") return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-600 border border-red-100">
-      <PackageX className="w-3 h-3" /> Out of Stock
+      <PackageX className="w-3 h-3" /> Checked Out
     </span>
   );
-  if (st === "low") return (
+  if (level === "low") return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-100">
       <TrendingDown className="w-3 h-3" /> Low Stock
     </span>
   );
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-      <PackageCheck className="w-3 h-3" /> In Stock
+      <PackageCheck className="w-3 h-3" /> Checked In
     </span>
   );
 }
@@ -726,7 +728,7 @@ function ProductDetailPanel({
   const bp     = parsePrice(product.buying_price);
   const sp     = parsePrice(product.selling_price);
   const margin = sp > 0 ? (sp - bp) / sp * 100 : 0;
-  const stockSt = getStockStatus(product);
+  const stockLevel = getLocalStockLevel(product);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/30 backdrop-blur-sm">
@@ -788,24 +790,24 @@ function ProductDetailPanel({
 
           {/* Profit card */}
           <div className={`rounded-2xl p-5 flex items-center justify-between ${
-            stockSt === "sold_out" ? "bg-red-50 border border-red-100" :
-            stockSt === "low"     ? "bg-amber-50 border border-amber-100" :
-                                    "bg-violet-50 border border-violet-100"
+            stockLevel === "out" ? "bg-red-50 border border-red-100" :
+            stockLevel === "low" ? "bg-amber-50 border border-amber-100" :
+                                   "bg-violet-50 border border-violet-100"
           }`}>
             <div>
               <p className={`text-xs font-semibold uppercase tracking-wide ${
-                stockSt === "sold_out" ? "text-red-400" : stockSt === "low" ? "text-amber-500" : "text-violet-500"
+                stockLevel === "out" ? "text-red-400" : stockLevel === "low" ? "text-amber-500" : "text-violet-500"
               }`}>Profit Margin</p>
               <p className={`text-3xl font-bold mt-1 ${
-                stockSt === "sold_out" ? "text-red-700" : stockSt === "low" ? "text-amber-700" : "text-violet-700"
+                stockLevel === "out" ? "text-red-700" : stockLevel === "low" ? "text-amber-700" : "text-violet-700"
               }`}>{margin.toFixed(1)}%</p>
             </div>
             <div className="text-right">
               <p className={`text-xs font-semibold uppercase tracking-wide ${
-                stockSt === "sold_out" ? "text-red-400" : stockSt === "low" ? "text-amber-500" : "text-violet-400"
+                stockLevel === "out" ? "text-red-400" : stockLevel === "low" ? "text-amber-500" : "text-violet-400"
               }`}>Per Unit</p>
               <p className={`text-2xl font-bold mt-1 ${
-                stockSt === "sold_out" ? "text-red-700" : stockSt === "low" ? "text-amber-700" : "text-violet-700"
+                stockLevel === "out" ? "text-red-700" : stockLevel === "low" ? "text-amber-700" : "text-violet-700"
               }`}>${(sp - bp).toFixed(2)}</p>
             </div>
           </div>
@@ -837,7 +839,10 @@ const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: React.Elemen
   { value: "other",        label: "Other",        icon: ShoppingCart},
 ];
 
-function CheckoutModal({ onClose }: { onClose: () => void }) {
+function CheckoutModal({ onClose, onCheckedOut }: {
+  onClose: () => void;
+  onCheckedOut: (productId: number, qtySold: number) => void;
+}) {
   const [step,          setStep]          = useState<CheckoutStep>("scan");
   const [barcode,       setBarcode]       = useState("");
   const [product,       setProduct]       = useState<Product | null>(null);
@@ -885,6 +890,7 @@ function CheckoutModal({ onClose }: { onClose: () => void }) {
       });
       setSale(result);
       setStep("success");
+      if (product) onCheckedOut(product.id, quantity); // optimistic: flip badge immediately
     } catch (err) {
       setError(err instanceof Error ? err.message : "Checkout failed. Please try again.");
     } finally {
@@ -1149,7 +1155,7 @@ export default function ProductsPage() {
   const [total,      setTotal]      = useState(0);
   const [page,       setPage]       = useState(1);
   const [search,     setSearch]     = useState("");
-  const [stockFilter,setStockFilter]= useState<"" | "in_stock" | "low" | "sold_out">("");
+  const [stockFilter,setStockFilter]= useState<"" | "in_stock" | "low" | "out_of_stock">("");
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState("");
   const [toast,      setToast]      = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -1220,14 +1226,19 @@ export default function ProductsPage() {
     setCategories((prev) => [...prev, cat]);
   }
 
-  // Apply client-side stock filter
+  // Apply client-side stock filter using backend stock_status + local low detection
   const rows = stockFilter
-    ? products.filter((p) => getStockStatus(p) === stockFilter)
+    ? products.filter((p) => {
+        if (stockFilter === "out_of_stock") return p.stock_status === "out_of_stock";
+        if (stockFilter === "low")          return p.stock_status === "in_stock" && p.quantity_in_stock <= p.minimum_stock;
+        if (stockFilter === "in_stock")     return p.stock_status === "in_stock" && p.quantity_in_stock > p.minimum_stock;
+        return true;
+      })
     : products;
 
-  const inStockCount  = products.filter((p) => getStockStatus(p) === "in_stock").length;
-  const lowCount      = products.filter((p) => getStockStatus(p) === "low").length;
-  const soldOutCount  = products.filter((p) => getStockStatus(p) === "sold_out").length;
+  const inStockCount  = products.filter((p) => p.stock_status === "in_stock" && p.quantity_in_stock > p.minimum_stock).length;
+  const lowCount      = products.filter((p) => p.stock_status === "in_stock" && p.quantity_in_stock <= p.minimum_stock).length;
+  const soldOutCount  = products.filter((p) => p.stock_status === "out_of_stock").length;
 
   return (
     <div className="p-6 space-y-5 bg-gray-50 min-h-full">
@@ -1244,7 +1255,25 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {checkoutOpen && <CheckoutModal onClose={() => setCheckoutOpen(false)} />}
+      {checkoutOpen && (
+        <CheckoutModal
+          onClose={() => setCheckoutOpen(false)}
+          onCheckedOut={(productId, qtySold) => {
+            // Optimistic update: immediately flip stock_status in local state
+            setProducts(prev => prev.map(p => {
+              if (p.id !== productId) return p;
+              const newQty = Math.max(0, p.quantity_in_stock - qtySold);
+              return {
+                ...p,
+                quantity_in_stock: newQty,
+                stock_status: (newQty === 0 ? "out_of_stock" : "in_stock") as import("@/lib/api").StockStatus,
+              };
+            }));
+            // Background sync with backend
+            loadProducts();
+          }}
+        />
+      )}
 
       {addOpen && (
         <ProductFormModal
@@ -1309,9 +1338,9 @@ export default function ProductsPage() {
       {/* ── Stock summary cards ── */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: "In Stock",     count: inStockCount,  icon: PackageCheck, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100", filter: "in_stock" as const },
+          { label: "Checked In",   count: inStockCount,  icon: PackageCheck, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100", filter: "in_stock" as const },
           { label: "Low Stock",    count: lowCount,      icon: TrendingDown, color: "text-amber-600",   bg: "bg-amber-50",   border: "border-amber-100",   filter: "low" as const },
-          { label: "Out of Stock / Sold", count: soldOutCount,  icon: PackageX,    color: "text-red-600",    bg: "bg-red-50",     border: "border-red-100",     filter: "sold_out" as const },
+          { label: "Checked Out",  count: soldOutCount,  icon: PackageX,    color: "text-red-600",    bg: "bg-red-50",     border: "border-red-100",     filter: "out_of_stock" as const },
         ].map(({ label, count, icon: Icon, color, bg, border, filter }) => (
           <button
             key={label}

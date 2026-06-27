@@ -1,65 +1,37 @@
 import { api } from "./client";
 
-export interface StockMovement {
-  id: string;
-  type: "stock_in" | "stock_out" | "adjustment" | "transfer" | "damaged" | "expired";
-  productId: string;
-  productName: string;
-  sku: string;
+export type StockMovementStatus = "stock_in" | "stock_out";
+
+export interface StockMovementCreate {
+  barcode:  string;
+  status:   StockMovementStatus;
   quantity: number;
-  fromWarehouse?: string;
-  toWarehouse?: string;
-  reason?: string;
-  reference?: string;
-  performedBy: string;
-  createdAt: string;
 }
 
-export interface StockMovementsResponse {
-  data: StockMovement[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
-export interface StockInPayload {
-  productId: string;
-  quantity: number;
-  warehouse: string;
-  reference?: string;
-  notes?: string;
-}
-
-export interface StockAdjustPayload {
-  productId: string;
-  newQuantity: number;
-  reason: string;
-  warehouse: string;
-}
-
-export interface TransferPayload {
-  productId: string;
-  quantity: number;
-  fromWarehouse: string;
-  toWarehouse: string;
-  notes?: string;
+export interface StockMovementRead {
+  id:               number;
+  product_id:       number;
+  status:           StockMovementStatus;
+  quantity:         number;
+  performed_by_id:  number;
+  created_at:       string;
 }
 
 export const inventoryApi = {
-  getMovements(params?: { page?: number; limit?: number; type?: string; productId?: string }) {
-    const query = new URLSearchParams(params as Record<string, string>).toString();
-    return api.get<StockMovementsResponse>(`/api/inventory${query ? `?${query}` : ""}`);
+  getAll(params?: { skip?: number; limit?: number }) {
+    const query = params
+      ? new URLSearchParams(
+          Object.fromEntries(
+            Object.entries(params)
+              .filter(([, v]) => v !== undefined)
+              .map(([k, v]) => [k, String(v)])
+          )
+        ).toString()
+      : "";
+    return api.get<StockMovementRead[]>(`/stock-movements${query ? `?${query}` : ""}`);
   },
 
-  stockIn(payload: StockInPayload) {
-    return api.post<StockMovement>("/api/inventory/stock-in", payload);
-  },
-
-  adjust(payload: StockAdjustPayload) {
-    return api.post<StockMovement>("/api/inventory/adjust", payload);
-  },
-
-  transfer(payload: TransferPayload) {
-    return api.post<StockMovement>("/api/inventory/transfer", payload);
+  create(payload: StockMovementCreate) {
+    return api.post<StockMovementRead>("/stock-movements", payload);
   },
 };

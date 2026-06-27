@@ -3,7 +3,7 @@ import { api, getToken } from "./client";
 // ── Types matching the real backend schema ────────────────────────────────────
 
 export type PaymentMethod = "cash" | "card" | "mobile_money" | "other";
-export type SaleStatus    = "completed" | "voided" | "pending";
+export type SaleStatus    = "completed" | "voided" | "pending" | string;
 
 export interface SaleItemCreate {
   product_id?: number | null;
