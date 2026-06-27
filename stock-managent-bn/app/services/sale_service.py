@@ -11,7 +11,6 @@ from app.models.sale import Sale
 from app.models.sale_item import SaleItem
 from app.schemas.sale import SaleCreate
 from app.services.exceptions import InsufficientStockError, NotFoundError, PaymentFailedError
-from app.services.cashier_service import get_cashier
 
 
 def _generate_sale_number() -> str:
@@ -33,13 +32,11 @@ def _lock_product(db: Session, *, product_id: int | None, barcode: str | None) -
     return product
 
 
-def complete_sale(db: Session, data: SaleCreate) -> Sale:
-    get_cashier(db, data.cashier_id)
-
+def complete_sale(db: Session, data: SaleCreate, cashier_id: int) -> Sale:
     try:
         sale = Sale(
             sale_number=_generate_sale_number(),
-            cashier_id=data.cashier_id,
+            cashier_id=cashier_id,
             payment_method=data.payment_method,
             discount_amount=data.discount_amount,
             tax_amount=data.tax_amount,

@@ -20,7 +20,9 @@ class SaleStatus(str, enum.Enum):
 
 
 class UserRole(str, enum.Enum):
+    MANAGER = "manager"
     ADMIN = "admin"
+    STOCK_KEEPER = "stock_keeper"
     CASHIER = "cashier"
 
 
@@ -32,3 +34,8 @@ class StockMovementStatus(str, enum.Enum):
 class StockStatus(str, enum.Enum):
     IN_STOCK = "in_stock"
     OUT_OF_STOCK = "out_of_stock"
+
+
+class PurchaseType(str, enum.Enum):
+    PACKAGE = "package"
+    DETAIL = "detail"

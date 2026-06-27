@@ -16,3 +16,7 @@ class InsufficientStockError(Exception):
 
 class PaymentFailedError(Exception):
     pass
+
+
+class PermissionDeniedError(Exception):
+    pass

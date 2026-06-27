@@ -34,9 +34,11 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     sku: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
-    barcode: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    barcode: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, index=True)
 
-    buying_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    quantity_unit: Mapped[str] = mapped_column(String(32), nullable=False, server_default="pcs")
+
+    buying_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     selling_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
     quantity_in_stock: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
