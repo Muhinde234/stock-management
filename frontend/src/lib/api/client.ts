@@ -1,4 +1,4 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://stock-management-bn.onrender.com";
+const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "https://stock-management-bn.onrender.com").replace(/\/$/, "");
 
 // ── Token helpers (localStorage on client only) ───────────────────────────────
 
