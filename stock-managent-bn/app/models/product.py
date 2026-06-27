@@ -38,7 +38,7 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
 
     quantity_unit: Mapped[str] = mapped_column(String(32), nullable=False, server_default="pcs")
 
-    buying_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    buying_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     selling_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
     quantity_in_stock: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
