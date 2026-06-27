@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.models.enums import ProductStatus
+from app.models.enums import ProductStatus, StockStatus
 from app.models.product import Product
 from app.schemas.product import ProductCreate, ProductUpdate
 from app.services.exceptions import ConflictError, NotFoundError
@@ -44,6 +44,7 @@ def list_products(
     search: str | None = None,
     category_id: int | None = None,
     status: ProductStatus | None = None,
+    stock_status: StockStatus | None = None,
     skip: int = 0,
     limit: int = 50,
 ) -> list[Product]:
@@ -58,6 +59,10 @@ def list_products(
         stmt = stmt.where(Product.category_id == category_id)
     if status is not None:
         stmt = stmt.where(Product.status == status)
+    if stock_status == StockStatus.OUT_OF_STOCK:
+        stmt = stmt.where(Product.quantity_in_stock <= 0)
+    elif stock_status == StockStatus.IN_STOCK:
+        stmt = stmt.where(Product.quantity_in_stock > 0)
 
     stmt = stmt.order_by(Product.name).offset(skip).limit(limit)
     return list(db.execute(stmt).scalars().all())
