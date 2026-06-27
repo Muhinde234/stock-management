@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from uuid import uuid4
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -10,18 +9,13 @@ from app.schemas.product import ProductCreate, ProductUpdate
 from app.services.exceptions import ConflictError, NotFoundError
 
 
-def _generate_sku() -> str:
-    return f"SKU-{uuid4().hex[:10].upper()}"
-
-
 def create_product(db: Session, data: ProductCreate) -> Product:
-    sku = data.sku or _generate_sku()
-    if db.execute(select(Product.id).where(Product.sku == sku)).first():
-        raise ConflictError(f"SKU '{sku}' already exists")
+    if db.execute(select(Product.id).where(Product.sku == data.sku)).first():
+        raise ConflictError(f"SKU '{data.sku}' already exists")
     if data.barcode and db.execute(select(Product.id).where(Product.barcode == data.barcode)).first():
         raise ConflictError(f"Barcode '{data.barcode}' already exists")
 
-    product = Product(**{**data.model_dump(), "sku": sku})
+    product = Product(**data.model_dump())
     db.add(product)
     db.commit()
     db.refresh(product)

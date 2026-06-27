@@ -21,7 +21,7 @@ class ProductBase(BaseModel):
 
 
 class ProductCreate(ProductBase):
-    sku: str | None = None
+    sku: str
     barcode: str | None = None
 
 
