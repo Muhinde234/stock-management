@@ -2,12 +2,20 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
+from app.models.enums import UserRole
 from app.models.user import User
 from app.schemas.user import UserCreate
-from app.services.exceptions import ConflictError, NotFoundError
+from app.services.exceptions import ConflictError, NotFoundError, PermissionDeniedError
+
+MANAGER_CREATABLE_ROLES = {UserRole.STOCK_KEEPER, UserRole.CASHIER}
 
 
-def create_user(db: Session, data: UserCreate) -> User:
+def create_user(db: Session, data: UserCreate, created_by: User) -> User:
+    if created_by.role == UserRole.MANAGER and data.role not in MANAGER_CREATABLE_ROLES:
+        raise PermissionDeniedError(
+            f"A manager can only create stock keeper or cashier accounts, not '{data.role.value}'"
+        )
+
     if db.execute(select(User.id).where(User.email == data.email)).first():
         raise ConflictError(f"Email '{data.email}' already exists")
 
