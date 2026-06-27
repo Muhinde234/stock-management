@@ -10,6 +10,11 @@ class ShopCreate(BaseModel):
 
 
 class ShopUpdate(BaseModel):
+    name: str | None = None
+    location: str | None = None
+
+
+class ShopManagerAssign(BaseModel):
     manager_id: int | None = None
 
 
@@ -20,5 +25,6 @@ class ShopRead(BaseModel):
     name: str
     location: str | None
     manager_id: int | None
+    is_deleted: bool
     created_at: datetime
     updated_at: datetime
