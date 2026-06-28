@@ -5,14 +5,17 @@ from sqlalchemy.orm import Session
 
 from app.models.enums import ProductStatus, StockStatus
 from app.models.product import Product
+from app.models.stock import Stock
 from app.schemas.product import ProductCreate, ProductUpdate
 from app.services.exceptions import ConflictError, NotFoundError
 
 
 def create_product(db: Session, data: ProductCreate) -> Product:
+    if db.get(Stock, data.stock_id) is None:
+        raise NotFoundError(f"Stock {data.stock_id} not found")
     if db.execute(select(Product.id).where(Product.sku == data.sku)).first():
         raise ConflictError(f"SKU '{data.sku}' already exists")
-    if db.execute(select(Product.id).where(Product.barcode == data.barcode)).first():
+    if data.barcode and db.execute(select(Product.id).where(Product.barcode == data.barcode)).first():
         raise ConflictError(f"Barcode '{data.barcode}' already exists")
 
     product = Product(**data.model_dump())
@@ -43,6 +46,7 @@ def list_products(
     *,
     search: str | None = None,
     category_id: int | None = None,
+    stock_id: int | None = None,
     status: ProductStatus | None = None,
     stock_status: StockStatus | None = None,
     skip: int = 0,
@@ -57,6 +61,8 @@ def list_products(
         )
     if category_id is not None:
         stmt = stmt.where(Product.category_id == category_id)
+    if stock_id is not None:
+        stmt = stmt.where(Product.stock_id == stock_id)
     if status is not None:
         stmt = stmt.where(Product.status == status)
     if stock_status == StockStatus.OUT_OF_STOCK:

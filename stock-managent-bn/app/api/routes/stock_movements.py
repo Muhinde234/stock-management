@@ -1,13 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_admin
+from app.api.deps import get_current_user, get_db, require_stock_keeper
 from app.models.user import User
 from app.schemas.stock_movement import StockMovementCreate, StockMovementRead
 from app.services import stock_movement_service
 from app.services.exceptions import InsufficientStockError, NotFoundError
 
-router = APIRouter(prefix="/stock-movements", tags=["stock-movements"], dependencies=[Depends(require_admin)])
+router = APIRouter(
+    prefix="/stock-movements",
+    tags=["stock-movements"],
+    dependencies=[Depends(require_stock_keeper)],
+)
 
 
 @router.post("", response_model=StockMovementRead, status_code=201)

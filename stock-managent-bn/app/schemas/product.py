@@ -8,13 +8,13 @@ from app.schemas.category import CategoryRead
 
 
 class ProductBase(BaseModel):
-    name: str
+    name: str = Field(alias="productName")
+    quantity_unit: str = Field(alias="quantityUnit")
+    buying_price: Decimal = Field(alias="productPrice", ge=0)
+    selling_price: Decimal = Field(alias="sellingPrice", ge=0)
     description: str | None = None
     category_id: int
-    sku: str
-    barcode: str
-    buying_price: Decimal = Field(ge=0)
-    selling_price: Decimal = Field(ge=0)
+    stock_id: int
     quantity_in_stock: int = Field(default=0, ge=0)
     minimum_stock: int = Field(default=0, ge=0)
     expiry_date: date | None = None
@@ -22,17 +22,20 @@ class ProductBase(BaseModel):
 
 
 class ProductCreate(ProductBase):
-    pass
+    sku: str
+    barcode: str | None = None
 
 
 class ProductUpdate(BaseModel):
-    name: str | None = None
+    name: str | None = Field(default=None, alias="productName")
+    quantity_unit: str | None = Field(default=None, alias="quantityUnit")
+    buying_price: Decimal | None = Field(default=None, alias="productPrice", ge=0)
+    selling_price: Decimal | None = Field(default=None, alias="sellingPrice", ge=0)
     description: str | None = None
     category_id: int | None = None
+    stock_id: int | None = None
     sku: str | None = None
     barcode: str | None = None
-    buying_price: Decimal | None = Field(default=None, ge=0)
-    selling_price: Decimal | None = Field(default=None, ge=0)
     quantity_in_stock: int | None = Field(default=None, ge=0)
     minimum_stock: int | None = Field(default=None, ge=0)
     expiry_date: date | None = None
@@ -40,9 +43,11 @@ class ProductUpdate(BaseModel):
 
 
 class ProductRead(ProductBase):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: int
+    sku: str
+    barcode: str | None
     is_deleted: bool
     created_at: datetime
     updated_at: datetime
@@ -52,3 +57,15 @@ class ProductRead(ProductBase):
     @property
     def stock_status(self) -> StockStatus:
         return StockStatus.OUT_OF_STOCK if self.quantity_in_stock <= 0 else StockStatus.IN_STOCK
+
+    @computed_field
+    @property
+    def profit_per_unit(self) -> Decimal:
+        return self.selling_price - self.buying_price
+
+    @computed_field
+    @property
+    def profit_margin_percent(self) -> Decimal:
+        if self.selling_price == 0:
+            return Decimal("0")
+        return (self.profit_per_unit / self.selling_price * 100).quantize(Decimal("0.01"))

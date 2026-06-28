@@ -14,6 +14,7 @@ from app.models.enums import ProductStatus
 if TYPE_CHECKING:
     from app.models.category import Category
     from app.models.sale_item import SaleItem
+    from app.models.stock import Stock
 
 
 class Product(Base, TimestampMixin, SoftDeleteMixin):
@@ -32,9 +33,12 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     category_id: Mapped[int] = mapped_column(
         ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False, index=True
     )
+    stock_id: Mapped[int] = mapped_column(ForeignKey("stocks.id", ondelete="RESTRICT"), nullable=False, index=True)
 
     sku: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
-    barcode: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    barcode: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, index=True)
+
+    quantity_unit: Mapped[str] = mapped_column(String(32), nullable=False, server_default="pcs")
 
     buying_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     selling_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
@@ -52,4 +56,5 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     category: Mapped["Category"] = relationship(back_populates="products")
+    stock: Mapped["Stock"] = relationship()
     sale_items: Mapped[list["SaleItem"]] = relationship(back_populates="product")

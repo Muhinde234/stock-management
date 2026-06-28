@@ -19,7 +19,6 @@ class SaleItemCreate(BaseModel):
 
 
 class SaleCreate(BaseModel):
-    cashier_id: int
     items: list[SaleItemCreate]
     discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
     tax_amount: Decimal = Field(default=Decimal("0"), ge=0)
