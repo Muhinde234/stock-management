@@ -5,7 +5,7 @@ from app.api.deps import get_current_user, get_db, require_admin
 from app.models.user import User
 from app.schemas.user import UserCreate, UserRead
 from app.services import user_service
-from app.services.exceptions import ConflictError, PermissionDeniedError
+from app.services.exceptions import ConflictError, NotFoundError, PermissionDeniedError
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(require_admin)])
 
@@ -18,6 +18,8 @@ def create_user(data: UserCreate, db: Session = Depends(get_db), current_user: U
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except PermissionDeniedError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("", response_model=list[UserRead])

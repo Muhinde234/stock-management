@@ -17,7 +17,9 @@ class Shop(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(150), unique=True, nullable=False, index=True)
-    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    address: Mapped[str] = mapped_column(String(255), nullable=False, server_default="")
+    phone: Mapped[str] = mapped_column(String(32), nullable=False, server_default="")
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     manager_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )

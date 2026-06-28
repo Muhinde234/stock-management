@@ -1,17 +1,20 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ShopCreate(BaseModel):
-    name: str
-    location: str | None = None
-    manager_id: int | None = None
+    name: str = Field(alias="shopName")
+    address: str
+    phone: str
+    email: str | None = None
 
 
 class ShopUpdate(BaseModel):
-    name: str | None = None
-    location: str | None = None
+    name: str | None = Field(default=None, alias="shopName")
+    address: str | None = None
+    phone: str | None = None
+    email: str | None = None
 
 
 class ShopManagerAssign(BaseModel):
@@ -19,11 +22,13 @@ class ShopManagerAssign(BaseModel):
 
 
 class ShopRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: int
-    name: str
-    location: str | None
+    name: str = Field(alias="shopName")
+    address: str
+    phone: str
+    email: str | None
     manager_id: int | None
     is_deleted: bool
     created_at: datetime

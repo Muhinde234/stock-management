@@ -10,6 +10,7 @@ class UserCreate(BaseModel):
     password: str
     full_name: str | None = None
     role: UserRole
+    shop_id: int | None = None
 
 
 class UserRead(BaseModel):
@@ -21,3 +22,4 @@ class UserRead(BaseModel):
     full_name: str | None
     role: UserRole
     created_at: datetime
+    shop_id: int | None = None
