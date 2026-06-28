@@ -16,8 +16,6 @@ def record_purchase_order(db: Session, data: PurchaseOrderCreate, received_by_id
             raise NotFoundError(f"Product {data.product_id} not found")
 
         product.quantity_in_stock += data.quantity
-        if not product.barcode:
-            product.barcode = data.scanned_code
 
         purchase_order = PurchaseOrder(
             purchase_type=data.purchase_type,

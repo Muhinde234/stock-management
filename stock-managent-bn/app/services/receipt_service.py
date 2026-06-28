@@ -17,16 +17,16 @@ def _generate_receipt_number() -> str:
     return f"RCT-{datetime.now(timezone.utc):%Y%m%d}-{uuid4().hex[:8].upper()}"
 
 
-def _lock_product(db: Session, *, product_id: int | None, barcode: str | None) -> Product:
+def _lock_product(db: Session, *, product_id: int | None, sku: str | None) -> Product:
     stmt = select(Product).with_for_update()
     if product_id is not None:
         stmt = stmt.where(Product.id == product_id)
     else:
-        stmt = stmt.where(Product.barcode == barcode)
+        stmt = stmt.where(Product.sku == sku)
 
     product = db.execute(stmt).scalar_one_or_none()
     if product is None or product.is_deleted:
-        raise NotFoundError(f"Product not found (id={product_id}, barcode={barcode})")
+        raise NotFoundError(f"Product not found (id={product_id}, sku={sku})")
     if product.status != ProductStatus.ACTIVE:
         raise NotFoundError(f"Product '{product.sku}' is not active and cannot be checked out")
     return product
@@ -43,7 +43,7 @@ def create_receipt(db: Session, data: ReceiptCreate, checked_out_by_id: int) -> 
 
         total = Decimal("0")
         for item in data.items:
-            product = _lock_product(db, product_id=item.product_id, barcode=item.barcode)
+            product = _lock_product(db, product_id=item.product_id, sku=item.sku)
             if product.quantity_in_stock < item.quantity:
                 raise InsufficientStockError(product.sku, product.quantity_in_stock, item.quantity)
 

@@ -1,24 +1,49 @@
 from datetime import datetime, timezone
+from uuid import uuid4
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.models.category import Category
 from app.models.enums import ProductStatus, StockStatus
 from app.models.product import Product
 from app.models.stock import Stock
+from app.models.user import User
 from app.schemas.product import ProductCreate, ProductUpdate
 from app.services.exceptions import ConflictError, NotFoundError
 
 
-def create_product(db: Session, data: ProductCreate) -> Product:
-    if db.get(Stock, data.stock_id) is None:
-        raise NotFoundError(f"Stock {data.stock_id} not found")
-    if db.execute(select(Product.id).where(Product.sku == data.sku)).first():
-        raise ConflictError(f"SKU '{data.sku}' already exists")
-    if data.barcode and db.execute(select(Product.id).where(Product.barcode == data.barcode)).first():
-        raise ConflictError(f"Barcode '{data.barcode}' already exists")
+def _generate_sku() -> str:
+    return f"SKU-{uuid4().hex[:10].upper()}"
 
-    product = Product(**data.model_dump())
+
+def _resolve_stock_id(db: Session, data: ProductCreate, current_user: User) -> int:
+    if data.stock_id is not None:
+        if db.get(Stock, data.stock_id) is None:
+            raise NotFoundError(f"Stock {data.stock_id} not found")
+        return data.stock_id
+
+    stock = db.execute(
+        select(Stock).where(Stock.stock_keeper_id == current_user.id)
+    ).scalars().first()
+    if stock is None:
+        raise NotFoundError(
+            "No stock_id provided and current user has no assigned store; specify stock_id explicitly"
+        )
+    return stock.id
+
+
+def create_product(db: Session, data: ProductCreate, current_user: User) -> Product:
+    stock_id = _resolve_stock_id(db, data, current_user)
+
+    if data.category_id is not None and db.get(Category, data.category_id) is None:
+        raise NotFoundError(f"Category {data.category_id} not found")
+
+    sku = data.sku or _generate_sku()
+    if db.execute(select(Product.id).where(Product.sku == sku)).first():
+        raise ConflictError(f"SKU '{sku}' already exists")
+
+    product = Product(**{**data.model_dump(exclude={"sku", "stock_id"}), "sku": sku, "stock_id": stock_id})
     db.add(product)
     db.commit()
     db.refresh(product)
@@ -32,12 +57,12 @@ def get_product(db: Session, product_id: int) -> Product:
     return product
 
 
-def get_product_by_barcode(db: Session, barcode: str) -> Product:
+def get_product_by_sku(db: Session, sku: str) -> Product:
     product = db.execute(
-        select(Product).where(Product.barcode == barcode, Product.is_deleted.is_(False))
+        select(Product).where(Product.sku == sku, Product.is_deleted.is_(False))
     ).scalar_one_or_none()
     if product is None:
-        raise NotFoundError(f"Product with barcode '{barcode}' not found")
+        raise NotFoundError(f"Product with SKU '{sku}' not found")
     return product
 
 
@@ -56,9 +81,7 @@ def list_products(
 
     if search:
         pattern = f"%{search}%"
-        stmt = stmt.where(
-            or_(Product.name.ilike(pattern), Product.sku.ilike(pattern), Product.barcode.ilike(pattern))
-        )
+        stmt = stmt.where(or_(Product.name.ilike(pattern), Product.sku.ilike(pattern)))
     if category_id is not None:
         stmt = stmt.where(Product.category_id == category_id)
     if stock_id is not None:
@@ -81,9 +104,6 @@ def update_product(db: Session, product_id: int, data: ProductUpdate) -> Product
     if "sku" in updates and updates["sku"] != product.sku:
         if db.execute(select(Product.id).where(Product.sku == updates["sku"])).first():
             raise ConflictError(f"SKU '{updates['sku']}' already exists")
-    if "barcode" in updates and updates["barcode"] != product.barcode and updates["barcode"] is not None:
-        if db.execute(select(Product.id).where(Product.barcode == updates["barcode"])).first():
-            raise ConflictError(f"Barcode '{updates['barcode']}' already exists")
 
     for field, value in updates.items():
         setattr(product, field, value)

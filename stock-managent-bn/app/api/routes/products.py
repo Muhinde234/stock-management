@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_stock_keeper
 from app.models.enums import ProductStatus, StockStatus
+from app.models.user import User
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.services import product_service
 from app.services.exceptions import ConflictError, NotFoundError
@@ -11,11 +12,15 @@ router = APIRouter(prefix="/products", tags=["products"], dependencies=[Depends(
 
 
 @router.post("", response_model=ProductRead, status_code=201, dependencies=[Depends(require_stock_keeper)])
-def create_product(data: ProductCreate, db: Session = Depends(get_db)):
+def create_product(
+    data: ProductCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
     try:
-        return product_service.create_product(db, data)
+        return product_service.create_product(db, data, current_user)
     except ConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("", response_model=list[ProductRead])
@@ -41,10 +46,10 @@ def list_products(
     )
 
 
-@router.get("/barcode", response_model=ProductRead)
-def get_product_by_barcode(barcode: str, db: Session = Depends(get_db)):
+@router.get("/sku", response_model=ProductRead)
+def get_product_by_sku(sku: str, db: Session = Depends(get_db)):
     try:
-        return product_service.get_product_by_barcode(db, barcode)
+        return product_service.get_product_by_sku(db, sku)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

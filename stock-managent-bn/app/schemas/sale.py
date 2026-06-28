@@ -8,13 +8,13 @@ from app.models.enums import PaymentMethod, SaleStatus
 
 class SaleItemCreate(BaseModel):
     product_id: int | None = None
-    barcode: str | None = None
+    sku: str | None = None
     quantity: int = Field(gt=0)
 
     @model_validator(mode="after")
     def check_identifier(self) -> "SaleItemCreate":
-        if not self.product_id and not self.barcode:
-            raise ValueError("Either product_id or barcode must be provided")
+        if not self.product_id and not self.sku:
+            raise ValueError("Either product_id or sku must be provided")
         return self
 
 
