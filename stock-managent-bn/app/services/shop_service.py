@@ -21,7 +21,6 @@ def _validate_manager(db: Session, manager_id: int | None) -> None:
 def create_shop(db: Session, data: ShopCreate) -> Shop:
     if db.execute(select(Shop.id).where(Shop.name == data.name)).first():
         raise ConflictError(f"Shop '{data.name}' already exists")
-    _validate_manager(db, data.manager_id)
 
     shop = Shop(**data.model_dump())
     db.add(shop)
