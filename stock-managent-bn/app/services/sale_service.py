@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.enums import PaymentMethod, ProductStatus, SaleStatus
@@ -22,7 +22,7 @@ def _lock_product(db: Session, *, product_id: int | None, sku: str | None) -> Pr
     if product_id is not None:
         stmt = stmt.where(Product.id == product_id)
     else:
-        stmt = stmt.where(Product.sku == sku)
+        stmt = stmt.where(or_(Product.sku == sku, Product.barcode == sku))
 
     product = db.execute(stmt).scalar_one_or_none()
     if product is None or product.is_deleted:

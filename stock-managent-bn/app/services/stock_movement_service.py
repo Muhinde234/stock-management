@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.enums import StockMovementStatus
@@ -11,10 +11,10 @@ from app.services.exceptions import ConflictError, InsufficientStockError, NotFo
 def record_movement(db: Session, data: StockMovementCreate, performed_by_id: int) -> StockMovement:
     try:
         product = db.execute(
-            select(Product).where(Product.sku == data.sku).with_for_update()
+            select(Product).where(or_(Product.sku == data.sku, Product.barcode == data.sku)).with_for_update()
         ).scalar_one_or_none()
         if product is None or product.is_deleted:
-            raise NotFoundError(f"Product with SKU '{data.sku}' not found")
+            raise NotFoundError(f"Product with SKU/barcode '{data.sku}' not found")
 
         if data.status == StockMovementStatus.STOCK_OUT:
             if product.quantity_in_stock < data.quantity:
