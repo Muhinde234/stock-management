@@ -23,16 +23,20 @@ def create_stock(data: StockCreate, db: Session = Depends(get_db), current_user:
 
 
 @router.get("", response_model=list[StockRead])
-def list_stocks(shop_id: int | None = None, db: Session = Depends(get_db)):
-    return stock_service.list_stocks(db, shop_id=shop_id)
+def list_stocks(
+    shop_id: int | None = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    return stock_service.list_stocks(db, current_user, shop_id=shop_id)
 
 
 @router.get("/{stock_id}", response_model=StockRead)
-def get_stock(stock_id: int, db: Session = Depends(get_db)):
+def get_stock(stock_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     try:
-        return stock_service.get_stock(db, stock_id)
+        return stock_service.get_stock(db, stock_id, current_user)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionDeniedError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
 @router.patch("/{stock_id}", response_model=StockRead)

@@ -30,23 +30,25 @@ def create_stock(db: Session, data: StockCreate, current_user: User) -> Stock:
     return stock
 
 
-def list_stocks(db: Session, *, shop_id: int | None = None) -> list[Stock]:
+def list_stocks(db: Session, current_user: User, *, shop_id: int | None = None) -> list[Stock]:
     stmt = select(Stock)
+    if current_user.role == UserRole.MANAGER:
+        stmt = stmt.join(Shop, Stock.shop_id == Shop.id).where(Shop.manager_id == current_user.id)
     if shop_id is not None:
         stmt = stmt.where(Stock.shop_id == shop_id)
     return list(db.execute(stmt.order_by(Stock.name)).scalars().all())
 
 
-def get_stock(db: Session, stock_id: int) -> Stock:
+def get_stock(db: Session, stock_id: int, current_user: User) -> Stock:
     stock = db.get(Stock, stock_id)
     if stock is None:
         raise NotFoundError(f"Stock {stock_id} not found")
+    _check_manager_owns_stock(stock, current_user)
     return stock
 
 
 def update_stock(db: Session, stock_id: int, data: StockUpdate, current_user: User) -> Stock:
-    stock = get_stock(db, stock_id)
-    _check_manager_owns_stock(stock, current_user)
+    stock = get_stock(db, stock_id, current_user)
 
     updates = data.model_dump(exclude_unset=True)
 
@@ -71,8 +73,7 @@ def update_stock(db: Session, stock_id: int, data: StockUpdate, current_user: Us
 
 
 def delete_stock(db: Session, stock_id: int, current_user: User) -> None:
-    stock = get_stock(db, stock_id)
-    _check_manager_owns_stock(stock, current_user)
+    get_stock(db, stock_id, current_user)
 
     if db.execute(select(Product.id).where(Product.stock_id == stock_id)).first():
         raise ConflictError(f"Cannot delete stock {stock_id}: it still has products registered under it")
