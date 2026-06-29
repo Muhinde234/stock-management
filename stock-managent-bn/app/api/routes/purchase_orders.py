@@ -5,7 +5,7 @@ from app.api.deps import get_current_user, get_db, require_stock_keeper
 from app.models.user import User
 from app.schemas.purchase_order import PurchaseOrderCreate, PurchaseOrderRead
 from app.services import purchase_order_service
-from app.services.exceptions import NotFoundError
+from app.services.exceptions import ConflictError, NotFoundError
 
 router = APIRouter(
     prefix="/purchase-orders",
@@ -24,6 +24,8 @@ def create_purchase_order(
         return purchase_order_service.record_purchase_order(db, data, received_by_id=current_user.id)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("", response_model=list[PurchaseOrderRead])
