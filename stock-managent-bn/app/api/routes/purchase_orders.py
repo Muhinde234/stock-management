@@ -8,8 +8,8 @@ from app.services import purchase_order_service
 from app.services.exceptions import ConflictError, NotFoundError
 
 router = APIRouter(
-    prefix="/purchase-orders",
-    tags=["purchase-orders"],
+    prefix="/purchases",
+    tags=["purchases"],
     dependencies=[Depends(require_stock_keeper)],
 )
 
