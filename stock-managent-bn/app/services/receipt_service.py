@@ -37,6 +37,7 @@ def create_receipt(db: Session, data: ReceiptCreate, checked_out_by_id: int) -> 
         receipt = Receipt(
             receipt_number=_generate_receipt_number(),
             client_name=data.client_name,
+            client_phone=data.client_phone,
             checked_out_by_id=checked_out_by_id,
         )
         db.add(receipt)
@@ -73,7 +74,9 @@ def create_receipt(db: Session, data: ReceiptCreate, checked_out_by_id: int) -> 
 
 def get_receipt(db: Session, receipt_id: int) -> Receipt:
     receipt = db.execute(
-        select(Receipt).where(Receipt.id == receipt_id).options(selectinload(Receipt.items))
+        select(Receipt)
+        .where(Receipt.id == receipt_id)
+        .options(selectinload(Receipt.items).selectinload(ReceiptItem.product))
     ).scalar_one_or_none()
     if receipt is None:
         raise NotFoundError(f"Receipt {receipt_id} not found")
@@ -83,7 +86,7 @@ def get_receipt(db: Session, receipt_id: int) -> Receipt:
 def list_receipts(db: Session, *, skip: int = 0, limit: int = 50) -> list[Receipt]:
     stmt = (
         select(Receipt)
-        .options(selectinload(Receipt.items))
+        .options(selectinload(Receipt.items).selectinload(ReceiptItem.product))
         .order_by(Receipt.created_at.desc())
         .offset(skip)
         .limit(limit)
