@@ -6,18 +6,19 @@ export type PaymentMethod = "cash" | "card" | "mobile_money" | "other";
 export type SaleStatus    = "completed" | "voided" | "pending" | string;
 
 export interface SaleItemCreate {
-  product_id?: number | null;
-  barcode?:    string | null;
+  product_id?: number;
+  sku?:        string;
   quantity:    number;
 }
 
 export interface SaleCreate {
-  cashier_id:      number;
-  items:           SaleItemCreate[];
-  discount_amount?: string | number;
-  tax_amount?:      string | number;
-  payment_method:  PaymentMethod;
-  cash_received?:  string | number | null;
+  client_name?:     string;
+  client_phone?:    string;
+  items:            SaleItemCreate[];
+  discount_amount?: number;
+  tax_amount?:      number;
+  payment_method:   PaymentMethod;
+  cash_received?:   number;
 }
 
 export interface SaleItemRead {
@@ -57,8 +58,7 @@ export function getCashierIdFromToken(): number {
 }
 
 export const salesApi = {
-  /** Create a sale / checkout */
-  checkout(payload: SaleCreate) {
+  create(payload: SaleCreate) {
     return api.post<SaleRead>("/sales", payload);
   },
 

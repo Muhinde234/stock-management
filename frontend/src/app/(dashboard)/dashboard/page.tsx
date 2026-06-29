@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
+import { useSyncExternalStore } from "react";
+import { getCurrentUser } from "@/lib/auth";
+import ShopManagerDashboard from "./ShopManagerDashboard";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   Tooltip, ResponsiveContainer, CartesianGrid,
@@ -81,7 +84,22 @@ const QUICK_ACTIONS = [
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+function getRoleSnap(): string | null {
+  const u = getCurrentUser();
+  return u?.role ?? null;
+}
+
 export default function DashboardPage() {
+  const role = useSyncExternalStore(
+    () => () => {},
+    getRoleSnap,
+    () => null,
+  );
+  if (role === "shop_manager") return <ShopManagerDashboard />;
+  return <AdminDashboard />;
+}
+
+function AdminDashboard() {
   const [showExport, setShowExport] = useState(false);
   const [query,      setQuery]      = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -135,9 +153,9 @@ export default function DashboardPage() {
   );
 
   const totalProducts  = products.length;
-  const lowStockItems  = products.filter(p => p.quantity_in_stock > 0 && p.quantity_in_stock <= p.minimum_stock).length;
-  const outOfStockItems= products.filter(p => p.quantity_in_stock === 0).length;
-  const inStockItems   = products.filter(p => p.quantity_in_stock > p.minimum_stock).length;
+  const lowStockItems  = products.filter(p => (p.initialQuantity ?? 0) > 0 && (p.initialQuantity ?? 0) <= p.minimumQuantity).length;
+  const outOfStockItems= products.filter(p => (p.initialQuantity ?? 0) === 0).length;
+  const inStockItems   = products.filter(p => (p.initialQuantity ?? 0) > p.minimumQuantity).length;
 
   // ── Stats cards config (built from real data) ──────────────────────────────
 
@@ -212,7 +230,7 @@ export default function DashboardPage() {
       sale.items.forEach(item => {
         const total = parseFloat(item.total_price) || 0;
         const prod  = products.find(p => p.id === item.product_id);
-        const name  = prod?.name ?? `Product #${item.product_id}`;
+        const name  = prod?.productName ?? `Product #${item.product_id}`;
         if (!byProduct[item.product_id]) byProduct[item.product_id] = { name, revenue: 0 };
         byProduct[item.product_id].revenue += total;
       });
@@ -237,14 +255,14 @@ export default function DashboardPage() {
 
   const stockAlerts = useMemo(() =>
     products
-      .filter(p => p.quantity_in_stock <= p.minimum_stock)
-      .sort((a, b) => a.quantity_in_stock - b.quantity_in_stock)
+      .filter(p => (p.initialQuantity ?? 0) <= p.minimumQuantity)
+      .sort((a, b) => (a.initialQuantity ?? 0) - (b.initialQuantity ?? 0))
       .slice(0, 8)
       .map(p => ({
-        product: p.name,
+        product: p.productName,
         sku:     p.sku,
-        stock:   p.quantity_in_stock,
-        level:   p.quantity_in_stock === 0 ? "Critical" : "Low Stock" as "Critical" | "Low Stock",
+        stock:   p.initialQuantity ?? 0,
+        level:   (p.initialQuantity ?? 0) === 0 ? "Critical" : "Low Stock" as "Critical" | "Low Stock",
       })),
     [products]
   );
@@ -260,12 +278,12 @@ export default function DashboardPage() {
     const q = query.toLowerCase();
     const res: { type: string; label: string; sub: string; href: string }[] = [];
     products.filter(p =>
-      p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
+      p.productName.toLowerCase().includes(q) || (p.sku ?? "").toLowerCase().includes(q)
     ).slice(0, 3).forEach(p => {
       res.push({
         type:  "Product",
-        label: p.name,
-        sub:   `${p.sku} · ${p.quantity_in_stock} in stock`,
+        label: p.productName,
+        sub:   `${p.sku ?? ""} · ${p.initialQuantity ?? 0} in stock`,
         href:  "/products",
       });
     });

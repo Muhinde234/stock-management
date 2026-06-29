@@ -89,7 +89,7 @@ function AddMovementModal({
                 {step === "scan" ? "Scan Product" : "Record Movement"}
               </h2>
               <p className="text-xs text-gray-400 mt-0.5">
-                {step === "scan" ? "Scan or type barcode, then press Enter" : product?.name}
+                {step === "scan" ? "Scan or type barcode, then press Enter" : product?.productName}
               </p>
             </div>
           </div>
@@ -145,8 +145,8 @@ function AddMovementModal({
                   <Package className="w-5 h-5 text-violet-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900">{product.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{product.sku} · {product.quantity_in_stock} in stock</p>
+                  <p className="text-sm font-bold text-gray-900">{product.productName}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{product.sku} · {product.initialQuantity ?? 0} in stock</p>
                 </div>
               </div>
 
@@ -253,7 +253,7 @@ export default function InventoryPage() {
     if (filter && m.status !== filter) return false;
     if (search) {
       const p = productMap[m.product_id];
-      const name = p?.name ?? "";
+      const name = p?.productName ?? "";
       const sku  = p?.sku  ?? "";
       if (!name.toLowerCase().includes(search.toLowerCase()) && !sku.toLowerCase().includes(search.toLowerCase())) return false;
     }
@@ -379,7 +379,7 @@ export default function InventoryPage() {
                                   ? <ArrowDownToLine className="w-3.5 h-3.5 text-emerald-600" />
                                   : <ArrowUpFromLine  className="w-3.5 h-3.5 text-red-600" />}
                               </div>
-                              <span className="font-semibold text-gray-800">{prod?.name ?? `Product #${m.product_id}`}</span>
+                              <span className="font-semibold text-gray-800">{prod?.productName ?? `Product #${m.product_id}`}</span>
                             </div>
                           </td>
                           <td className="px-4 py-3.5 text-xs font-mono text-gray-400">{prod?.sku ?? "—"}</td>

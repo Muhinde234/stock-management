@@ -70,11 +70,11 @@ export default function ReportsPage() {
 
   // Stock value
   const stockValue = useMemo(
-    () => products.reduce((sum, p) => sum + parsePrice(p.buying_price) * p.quantity_in_stock, 0),
+    () => products.reduce((sum, p) => sum + parsePrice(p.productPrice) * (p.initialQuantity ?? 0), 0),
     [products]
   );
   const retailValue = useMemo(
-    () => products.reduce((sum, p) => sum + parsePrice(p.selling_price) * p.quantity_in_stock, 0),
+    () => products.reduce((sum, p) => sum + parsePrice(p.sellingPrice) * (p.initialQuantity ?? 0), 0),
     [products]
   );
 
@@ -117,7 +117,7 @@ export default function ReportsPage() {
     completed.forEach(sale => {
       sale.items.forEach(item => {
         const prod = products.find(p => p.id === item.product_id);
-        const name = prod?.name ?? `#${item.product_id}`;
+        const name = prod?.productName ?? `#${item.product_id}`;
         if (!map[item.product_id]) map[item.product_id] = { name, qty: 0, revenue: 0 };
         map[item.product_id].qty     += item.quantity;
         map[item.product_id].revenue += parseFloat(item.total_price) || 0;
@@ -128,8 +128,8 @@ export default function ReportsPage() {
 
   // Low stock products
   const lowStock = useMemo(() =>
-    products.filter(p => p.quantity_in_stock <= p.minimum_stock)
-      .sort((a, b) => a.quantity_in_stock - b.quantity_in_stock)
+    products.filter(p => (p.initialQuantity ?? 0) <= p.minimumQuantity)
+      .sort((a, b) => (a.initialQuantity ?? 0) - (b.initialQuantity ?? 0))
       .slice(0, 8),
     [products]
   );
@@ -332,16 +332,16 @@ export default function ReportsPage() {
                 <tbody className="divide-y divide-gray-50">
                   {lowStock.map(p => (
                     <tr key={p.id} className="hover:bg-gray-50/60 transition-colors">
-                      <td className="px-5 py-3 text-sm font-medium text-gray-800 max-w-[140px] truncate">{p.name}</td>
-                      <td className="px-5 py-3 text-sm font-bold text-red-500">{p.quantity_in_stock}</td>
-                      <td className="px-5 py-3 text-sm text-gray-400">{p.minimum_stock}</td>
+                      <td className="px-5 py-3 text-sm font-medium text-gray-800 max-w-[140px] truncate">{p.productName}</td>
+                      <td className="px-5 py-3 text-sm font-bold text-red-500">{p.initialQuantity ?? 0}</td>
+                      <td className="px-5 py-3 text-sm text-gray-400">{p.minimumQuantity}</td>
                       <td className="px-5 py-3">
                         <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                          p.quantity_in_stock === 0
+                          (p.initialQuantity ?? 0) === 0
                             ? "bg-red-100 text-red-600"
                             : "bg-amber-100 text-amber-700"
                         }`}>
-                          {p.quantity_in_stock === 0 ? "Out of Stock" : "Low Stock"}
+                          {(p.initialQuantity ?? 0) === 0 ? "Out of Stock" : "Low Stock"}
                         </span>
                       </td>
                     </tr>

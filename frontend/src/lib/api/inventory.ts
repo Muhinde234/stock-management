@@ -3,22 +3,25 @@ import { api } from "./client";
 export type StockMovementStatus = "stock_in" | "stock_out";
 
 export interface StockMovementCreate {
-  barcode:  string;
+  sku:      string;           // primary product identifier per Swagger
   status:   StockMovementStatus;
   quantity: number;
+  notes?:   string;
 }
 
 export interface StockMovementRead {
-  id:               number;
-  product_id:       number;
-  status:           StockMovementStatus;
-  quantity:         number;
-  performed_by_id:  number;
-  created_at:       string;
+  id:              number;
+  product_id:      number;
+  sku:             string;
+  status:          StockMovementStatus;
+  quantity:        number;
+  performed_by_id: number;
+  notes?:          string;
+  created_at:      string;
 }
 
 export const inventoryApi = {
-  getAll(params?: { skip?: number; limit?: number }) {
+  getAll(params?: { skip?: number; limit?: number; product_id?: number }) {
     const query = params
       ? new URLSearchParams(
           Object.fromEntries(

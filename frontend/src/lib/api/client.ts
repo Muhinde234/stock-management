@@ -48,7 +48,14 @@ async function request<T>(
     let message = `Request failed: ${res.status}`;
     try {
       const body = await res.json();
-      message = body?.message ?? body?.error ?? message;
+      // FastAPI returns { detail: [...] } for 422, { message/error: "..." } for others
+      if (Array.isArray(body?.detail)) {
+        message = body.detail.map((d: { msg?: string; loc?: string[] }) =>
+          [d.loc?.slice(1).join("."), d.msg].filter(Boolean).join(": ")
+        ).join(" | ");
+      } else {
+        message = body?.message ?? body?.error ?? body?.detail ?? message;
+      }
     } catch {}
     throw new ApiError(res.status, message);
   }

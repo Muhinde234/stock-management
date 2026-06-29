@@ -1,54 +1,69 @@
 import { api } from "./client";
 import type { Category } from "./categories";
+import type { Unit } from "./units";
 export type { Category };
 
 export type StockStatus = "in_stock" | "out_of_stock";
 
 export interface Product {
-  id: number;
-  name: string;
-  description?: string;
-  category_id: number;
-  category?: Category;
-  sku: string;
-  barcode?: string;
-  buying_price: number | string;   // backend returns as string
-  selling_price: number | string;  // backend returns as string
-  quantity_in_stock: number;
-  minimum_stock: number;
-  expiry_date?: string;
-  status: "active" | "inactive";
-  is_deleted?: boolean;
-  created_at: string;
-  updated_at?: string;
-  stock_status: StockStatus;       // backend-computed: in_stock | out_of_stock
+  id:                   number;
+  productName:          string;
+  quantityUnit:         number | Unit;   // unit ID or expanded unit object
+  sellingPrice:         number | string;
+  productPrice?:        number | string; // buying / purchase price
+  minimumQuantity:      number;
+  initialQuantity?:     number;          // current stock level
+  category_id:          number;
+  category?:            Category;
+  sku?:                 string;
+  stock_id?:            number;
+  expiry_date?:         string;
+  status:               "active" | "inactive";
+  stock_status:         StockStatus;
+  profit_per_unit?:     number | string;
+  profit_margin_percent?: number | string;
+  additionalProperties?: Record<string, string>;
+  created_at:           string;
+  updated_at?:          string;
 }
 
 export interface ProductPayload {
-  name: string;
-  description?: string;
-  category_id: number;
-  sku: string;
-  barcode?: string;
-  buying_price: number;
-  selling_price: number;
-  quantity_in_stock: number;
-  minimum_stock: number;
-  expiry_date?: string;
-  status: "active" | "inactive";
+  productName:           string;
+  quantityUnit:          number;          // unit ID
+  sellingPrice:          number;
+  minimumQuantity:       number;
+  category_id:           number;
+  productPrice?:         number;          // buying price
+  initialQuantity?:      number;
+  expiry_date?:          string;
+  status:                "active" | "inactive";
+  sku?:                  string;
+  stock_id?:             number;
+  additionalProperties?: Record<string, string>;
 }
 
 export interface GetProductsParams {
-  search?:      string;
-  category_id?: number;
-  status?:      string;
-  skip?:        number;
-  limit?:       number;
+  search?:       string;
+  category_id?:  number;
+  stock_id?:     number;
+  status?:       string;
+  stock_status?: string;
+  skip?:         number;
+  limit?:        number;
 }
 
 /** Safely parse price regardless of whether backend returns string or number */
-export function parsePrice(val: number | string): number {
+export function parsePrice(val: number | string | undefined | null): number {
+  if (val === undefined || val === null) return 0;
   return typeof val === "number" ? val : parseFloat(val) || 0;
+}
+
+/** Get unit name from a product's quantityUnit (could be id or object) */
+export function getUnitName(quantityUnit: number | Unit | undefined, units: Unit[]): string {
+  if (quantityUnit === undefined) return "";
+  if (typeof quantityUnit === "object") return quantityUnit.unitName;
+  const found = units.find(u => u.id === quantityUnit);
+  return found?.unitName ?? String(quantityUnit);
 }
 
 export const productsApi = {
@@ -69,12 +84,12 @@ export const productsApi = {
     return api.get<Product>(`/products/${id}`);
   },
 
-  getByBarcode(barcode: string) {
-    return api.get<Product>(`/products/barcode?barcode=${encodeURIComponent(barcode)}`);
+  getBySku(sku: string) {
+    return api.get<Product>(`/products/sku?sku=${encodeURIComponent(sku)}`);
   },
 
   create(payload: ProductPayload) {
-    return api.post<Product>("/products", payload);
+    return api.post<Product>("/products/register", payload);
   },
 
   update(id: number, payload: Partial<ProductPayload>) {
