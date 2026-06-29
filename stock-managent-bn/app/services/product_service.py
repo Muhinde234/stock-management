@@ -1,21 +1,32 @@
 from datetime import datetime, timezone
+from uuid import uuid4
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.models.category import Category
 from app.models.enums import ProductStatus, StockStatus
 from app.models.product import Product
+from app.models.unit import Unit
 from app.schemas.product import ProductCreate, ProductUpdate
 from app.services.exceptions import ConflictError, NotFoundError
 
 
-def create_product(db: Session, data: ProductCreate) -> Product:
-    if db.execute(select(Product.id).where(Product.sku == data.sku)).first():
-        raise ConflictError(f"SKU '{data.sku}' already exists")
-    if db.execute(select(Product.id).where(Product.barcode == data.barcode)).first():
-        raise ConflictError(f"Barcode '{data.barcode}' already exists")
+def _generate_sku() -> str:
+    return f"SKU-{uuid4().hex[:10].upper()}"
 
-    product = Product(**data.model_dump())
+
+def register_product(db: Session, data: ProductCreate) -> Product:
+    if db.get(Category, data.category_id) is None:
+        raise NotFoundError(f"Category {data.category_id} not found")
+    if db.get(Unit, data.unit_id) is None:
+        raise NotFoundError(f"Unit {data.unit_id} not found")
+
+    sku = _generate_sku()
+    if db.execute(select(Product.id).where(Product.sku == sku)).first():
+        raise ConflictError(f"SKU '{sku}' already exists")
+
+    product = Product(**data.model_dump(), sku=sku)
     db.add(product)
     db.commit()
     db.refresh(product)
@@ -29,12 +40,12 @@ def get_product(db: Session, product_id: int) -> Product:
     return product
 
 
-def get_product_by_barcode(db: Session, barcode: str) -> Product:
+def get_product_by_sku(db: Session, sku: str) -> Product:
     product = db.execute(
-        select(Product).where(Product.barcode == barcode, Product.is_deleted.is_(False))
+        select(Product).where(or_(Product.sku == sku, Product.barcode == sku), Product.is_deleted.is_(False))
     ).scalar_one_or_none()
     if product is None:
-        raise NotFoundError(f"Product with barcode '{barcode}' not found")
+        raise NotFoundError(f"Product with SKU/barcode '{sku}' not found")
     return product
 
 
@@ -43,6 +54,7 @@ def list_products(
     *,
     search: str | None = None,
     category_id: int | None = None,
+    stock_id: int | None = None,
     status: ProductStatus | None = None,
     stock_status: StockStatus | None = None,
     skip: int = 0,
@@ -52,11 +64,11 @@ def list_products(
 
     if search:
         pattern = f"%{search}%"
-        stmt = stmt.where(
-            or_(Product.name.ilike(pattern), Product.sku.ilike(pattern), Product.barcode.ilike(pattern))
-        )
+        stmt = stmt.where(or_(Product.name.ilike(pattern), Product.sku.ilike(pattern)))
     if category_id is not None:
         stmt = stmt.where(Product.category_id == category_id)
+    if stock_id is not None:
+        stmt = stmt.where(Product.stock_id == stock_id)
     if status is not None:
         stmt = stmt.where(Product.status == status)
     if stock_status == StockStatus.OUT_OF_STOCK:
@@ -75,7 +87,8 @@ def update_product(db: Session, product_id: int, data: ProductUpdate) -> Product
     if "sku" in updates and updates["sku"] != product.sku:
         if db.execute(select(Product.id).where(Product.sku == updates["sku"])).first():
             raise ConflictError(f"SKU '{updates['sku']}' already exists")
-    if "barcode" in updates and updates["barcode"] != product.barcode and updates["barcode"] is not None:
+
+    if "barcode" in updates and updates["barcode"] is not None and updates["barcode"] != product.barcode:
         if db.execute(select(Product.id).where(Product.barcode == updates["barcode"])).first():
             raise ConflictError(f"Barcode '{updates['barcode']}' already exists")
 

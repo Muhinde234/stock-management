@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.enums import PaymentMethod, ProductStatus, SaleStatus
@@ -11,35 +11,34 @@ from app.models.sale import Sale
 from app.models.sale_item import SaleItem
 from app.schemas.sale import SaleCreate
 from app.services.exceptions import InsufficientStockError, NotFoundError, PaymentFailedError
-from app.services.cashier_service import get_cashier
 
 
 def _generate_sale_number() -> str:
     return f"SALE-{datetime.now(timezone.utc):%Y%m%d}-{uuid4().hex[:8].upper()}"
 
 
-def _lock_product(db: Session, *, product_id: int | None, barcode: str | None) -> Product:
+def _lock_product(db: Session, *, product_id: int | None, sku: str | None) -> Product:
     stmt = select(Product).with_for_update()
     if product_id is not None:
         stmt = stmt.where(Product.id == product_id)
     else:
-        stmt = stmt.where(Product.barcode == barcode)
+        stmt = stmt.where(or_(Product.sku == sku, Product.barcode == sku))
 
     product = db.execute(stmt).scalar_one_or_none()
     if product is None or product.is_deleted:
-        raise NotFoundError(f"Product not found (id={product_id}, barcode={barcode})")
+        raise NotFoundError(f"Product not found (id={product_id}, sku={sku})")
     if product.status != ProductStatus.ACTIVE:
         raise PaymentFailedError(f"Product '{product.sku}' is not active and cannot be sold")
     return product
 
 
-def complete_sale(db: Session, data: SaleCreate) -> Sale:
-    get_cashier(db, data.cashier_id)
-
+def complete_sale(db: Session, data: SaleCreate, cashier_id: int) -> Sale:
     try:
         sale = Sale(
             sale_number=_generate_sale_number(),
-            cashier_id=data.cashier_id,
+            cashier_id=cashier_id,
+            client_name=data.client_name,
+            client_phone=data.client_phone,
             payment_method=data.payment_method,
             discount_amount=data.discount_amount,
             tax_amount=data.tax_amount,
@@ -48,7 +47,7 @@ def complete_sale(db: Session, data: SaleCreate) -> Sale:
 
         subtotal = Decimal("0")
         for item in data.items:
-            product = _lock_product(db, product_id=item.product_id, barcode=item.barcode)
+            product = _lock_product(db, product_id=item.product_id, sku=item.sku)
             if product.quantity_in_stock < item.quantity:
                 raise InsufficientStockError(product.sku, product.quantity_in_stock, item.quantity)
 
@@ -93,7 +92,7 @@ def complete_sale(db: Session, data: SaleCreate) -> Sale:
 
 def get_sale(db: Session, sale_id: int) -> Sale:
     sale = db.execute(
-        select(Sale).where(Sale.id == sale_id).options(selectinload(Sale.items))
+        select(Sale).where(Sale.id == sale_id).options(selectinload(Sale.items).selectinload(SaleItem.product))
     ).scalar_one_or_none()
     if sale is None:
         raise NotFoundError(f"Sale {sale_id} not found")
@@ -103,7 +102,7 @@ def get_sale(db: Session, sale_id: int) -> Sale:
 def list_sales(db: Session, *, skip: int = 0, limit: int = 50) -> list[Sale]:
     stmt = (
         select(Sale)
-        .options(selectinload(Sale.items))
+        .options(selectinload(Sale.items).selectinload(SaleItem.product))
         .order_by(Sale.sale_date.desc())
         .offset(skip)
         .limit(limit)
@@ -114,7 +113,10 @@ def list_sales(db: Session, *, skip: int = 0, limit: int = 50) -> list[Sale]:
 def void_sale(db: Session, sale_id: int) -> Sale:
     try:
         sale = db.execute(
-            select(Sale).where(Sale.id == sale_id).options(selectinload(Sale.items)).with_for_update()
+            select(Sale)
+            .where(Sale.id == sale_id)
+            .options(selectinload(Sale.items).selectinload(SaleItem.product))
+            .with_for_update()
         ).scalar_one_or_none()
         if sale is None:
             raise NotFoundError(f"Sale {sale_id} not found")

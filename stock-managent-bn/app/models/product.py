@@ -4,8 +4,9 @@ from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, Date, ForeignKey, Numeric, String, Text
+from sqlalchemy import CheckConstraint, Date, ForeignKey, Numeric, String
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base_class import Base, SoftDeleteMixin, TimestampMixin
@@ -14,6 +15,8 @@ from app.models.enums import ProductStatus
 if TYPE_CHECKING:
     from app.models.category import Category
     from app.models.sale_item import SaleItem
+    from app.models.stock import Stock
+    from app.models.unit import Unit
 
 
 class Product(Base, TimestampMixin, SoftDeleteMixin):
@@ -27,20 +30,26 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     category_id: Mapped[int] = mapped_column(
         ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False, index=True
     )
+    stock_id: Mapped[int | None] = mapped_column(
+        ForeignKey("stocks.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
 
     sku: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
-    barcode: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    barcode: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
 
-    buying_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    unit_id: Mapped[int] = mapped_column(ForeignKey("units.id", ondelete="RESTRICT"), nullable=False, index=True)
+
+    buying_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     selling_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
     quantity_in_stock: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
     minimum_stock: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
+
+    custom_properties: Mapped[dict[str, str] | None] = mapped_column(JSONB, nullable=True)
 
     expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
@@ -52,4 +61,6 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     category: Mapped["Category"] = relationship(back_populates="products")
+    stock: Mapped["Stock | None"] = relationship()
+    unit: Mapped["Unit"] = relationship(back_populates="products")
     sale_items: Mapped[list["SaleItem"]] = relationship(back_populates="product")

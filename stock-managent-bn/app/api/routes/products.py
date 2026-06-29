@@ -1,27 +1,37 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_admin
+from app.api.deps import get_current_user, get_db, require_admin
 from app.models.enums import ProductStatus, StockStatus
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.services import product_service
 from app.services.exceptions import ConflictError, NotFoundError
 
-router = APIRouter(prefix="/products", tags=["products"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/products", tags=["products"], dependencies=[Depends(get_current_user)])
 
 
-@router.post("", response_model=ProductRead, status_code=201)
-def create_product(data: ProductCreate, db: Session = Depends(get_db)):
+@router.post(
+    "/register",
+    response_model=ProductRead,
+    status_code=201,
+    summary="Register Product",
+    description="Add a product you sell",
+    dependencies=[Depends(require_admin)],
+)
+def register_product(data: ProductCreate, db: Session = Depends(get_db)):
     try:
-        return product_service.create_product(db, data)
+        return product_service.register_product(db, data)
     except ConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("", response_model=list[ProductRead])
 def list_products(
     search: str | None = None,
     category_id: int | None = None,
+    stock_id: int | None = None,
     status: ProductStatus | None = None,
     stock_status: StockStatus | None = None,
     skip: int = 0,
@@ -32,6 +42,7 @@ def list_products(
         db,
         search=search,
         category_id=category_id,
+        stock_id=stock_id,
         status=status,
         stock_status=stock_status,
         skip=skip,
@@ -39,10 +50,10 @@ def list_products(
     )
 
 
-@router.get("/barcode", response_model=ProductRead)
-def get_product_by_barcode(barcode: str, db: Session = Depends(get_db)):
+@router.get("/sku", response_model=ProductRead)
+def get_product_by_sku(sku: str, db: Session = Depends(get_db)):
     try:
-        return product_service.get_product_by_barcode(db, barcode)
+        return product_service.get_product_by_sku(db, sku)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -55,7 +66,7 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.patch("/{product_id}", response_model=ProductRead)
+@router.patch("/{product_id}", response_model=ProductRead, dependencies=[Depends(require_admin)])
 def update_product(product_id: int, data: ProductUpdate, db: Session = Depends(get_db)):
     try:
         return product_service.update_product(db, product_id, data)
@@ -65,7 +76,7 @@ def update_product(product_id: int, data: ProductUpdate, db: Session = Depends(g
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@router.delete("/{product_id}", status_code=204)
+@router.delete("/{product_id}", status_code=204, dependencies=[Depends(require_admin)])
 def delete_product(product_id: int, db: Session = Depends(get_db)):
     try:
         product_service.soft_delete_product(db, product_id)
