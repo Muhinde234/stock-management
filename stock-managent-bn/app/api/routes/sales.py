@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_admin, require_cashier
+from app.api.deps import get_current_user, get_db, require_admin, require_checkout
 from app.models.user import User
 from app.schemas.sale import SaleCreate, SaleRead
 from app.services import sale_service
 from app.services.exceptions import InsufficientStockError, NotFoundError, PaymentFailedError
 
-router = APIRouter(prefix="/sales", tags=["sales"], dependencies=[Depends(require_cashier)])
+router = APIRouter(prefix="/sales", tags=["sales"], dependencies=[Depends(require_checkout)])
 
 
 @router.post("", response_model=SaleRead, status_code=201)

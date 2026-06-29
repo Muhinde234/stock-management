@@ -52,5 +52,8 @@ class Sale(Base, TimestampMixin):
 
     cashier_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
 
+    client_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    client_phone: Mapped[str] = mapped_column(String(32), nullable=False)
+
     cashier: Mapped["User"] = relationship(back_populates="sales")
     items: Mapped[list["SaleItem"]] = relationship(back_populates="sale", cascade="all, delete-orphan")

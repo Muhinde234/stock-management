@@ -4,9 +4,11 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.models.enums import SaleStatus
 from app.models.product import Product
 from app.models.purchase_order import PurchaseOrder
-from app.models.receipt import Receipt
+from app.models.sale import Sale
+from app.models.sale_item import SaleItem
 from app.schemas.dashboard import DashboardStats
 
 
@@ -36,9 +38,16 @@ def get_dashboard_stats(db: Session, *, stock_id: int | None = None) -> Dashboar
         )
     today_check_ins = db.execute(check_in_stmt).scalar_one()
 
-    check_out_stmt = select(func.count(), func.coalesce(func.sum(Receipt.total_amount), 0)).where(
-        Receipt.created_at >= today_start
+    check_out_stmt = select(func.count(Sale.id), func.coalesce(func.sum(Sale.grand_total), 0)).where(
+        Sale.sale_date >= today_start, Sale.status == SaleStatus.COMPLETED
     )
+    if stock_id is not None:
+        matching_sale_ids = (
+            select(SaleItem.sale_id)
+            .join(Product, Product.id == SaleItem.product_id)
+            .where(Product.stock_id == stock_id)
+        )
+        check_out_stmt = check_out_stmt.where(Sale.id.in_(matching_sale_ids))
     today_check_outs, today_checkout_total = db.execute(check_out_stmt).one()
 
     return DashboardStats(
