@@ -40,6 +40,7 @@ def create_user(db: Session, data: UserCreate, created_by: User) -> User:
             full_name=data.full_name,
             role=data.role,
             hashed_password=hash_password(data.password),
+            shop_id=shop.id if shop is not None else None,
         )
         db.add(user)
         db.flush()
@@ -53,12 +54,14 @@ def create_user(db: Session, data: UserCreate, created_by: User) -> User:
         raise
 
     db.refresh(user)
-    user.shop_id = shop.id if shop is not None else None
     return user
 
 
-def list_users(db: Session) -> list[User]:
-    return list(db.execute(select(User).order_by(User.username)).scalars().all())
+def list_users(db: Session, *, shop_id: int | None = None) -> list[User]:
+    stmt = select(User).order_by(User.username)
+    if shop_id is not None:
+        stmt = stmt.where(User.shop_id == shop_id)
+    return list(db.execute(stmt).scalars().all())
 
 
 def get_user(db: Session, user_id: int) -> User:

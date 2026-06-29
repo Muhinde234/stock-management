@@ -6,17 +6,22 @@ from app.models.shop import Shop
 from app.models.stock import Stock
 from app.models.user import User
 from app.schemas.stock import StockCreate
-from app.services.exceptions import ConflictError, NotFoundError
+from app.services.exceptions import ConflictError, NotFoundError, PermissionDeniedError
 
 
-def create_stock(db: Session, data: StockCreate) -> Stock:
-    if db.get(Shop, data.shop_id) is None:
+def create_stock(db: Session, data: StockCreate, current_user: User) -> Stock:
+    shop = db.get(Shop, data.shop_id)
+    if shop is None:
         raise NotFoundError(f"Shop {data.shop_id} not found")
+
+    if current_user.role == UserRole.MANAGER and shop.manager_id != current_user.id:
+        raise PermissionDeniedError("You can only create stocks for the shop you manage")
 
     stock_keeper = db.get(User, data.stock_keeper_id)
     if stock_keeper is None or stock_keeper.role != UserRole.STOCK_KEEPER:
         raise ConflictError(f"User {data.stock_keeper_id} is not a stock keeper")
 
+    cashier = None
     if data.cashier_id is not None:
         cashier = db.get(User, data.cashier_id)
         if cashier is None or cashier.role != UserRole.CASHIER:
@@ -24,6 +29,11 @@ def create_stock(db: Session, data: StockCreate) -> Stock:
 
     stock = Stock(**data.model_dump())
     db.add(stock)
+
+    stock_keeper.shop_id = shop.id
+    if cashier is not None:
+        cashier.shop_id = shop.id
+
     db.commit()
     db.refresh(stock)
     return stock

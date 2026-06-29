@@ -23,5 +23,5 @@ def create_user(data: UserCreate, db: Session = Depends(get_db), current_user: U
 
 
 @router.get("", response_model=list[UserRead])
-def list_users(db: Session = Depends(get_db)):
-    return user_service.list_users(db)
+def list_users(shop_id: int | None = None, db: Session = Depends(get_db)):
+    return user_service.list_users(db, shop_id=shop_id)
