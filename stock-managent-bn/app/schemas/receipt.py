@@ -18,7 +18,16 @@ class ReceiptItemCreate(BaseModel):
 
 class ReceiptCreate(BaseModel):
     client_name: str
+    client_phone: str
     items: list[ReceiptItemCreate]
+
+
+class ReceiptProductRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    sku: str
 
 
 class ReceiptItemRead(BaseModel):
@@ -26,6 +35,7 @@ class ReceiptItemRead(BaseModel):
 
     id: int
     product_id: int
+    product: ReceiptProductRead
     quantity: int
     unit_price: Decimal
     subtotal: Decimal
@@ -37,6 +47,7 @@ class ReceiptRead(BaseModel):
     id: int
     receipt_number: str
     client_name: str
+    client_phone: str
     total_amount: Decimal
     checked_out_by_id: int
     created_at: datetime
