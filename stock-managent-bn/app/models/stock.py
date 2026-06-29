@@ -19,13 +19,13 @@ class Stock(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(150), nullable=False)
 
     shop_id: Mapped[int] = mapped_column(ForeignKey("shops.id", ondelete="RESTRICT"), nullable=False, index=True)
-    stock_keeper_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True
+    stock_keeper_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, index=True
     )
     cashier_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, index=True
     )
 
     shop: Mapped["Shop"] = relationship(back_populates="stocks")
-    stock_keeper: Mapped["User"] = relationship(foreign_keys=[stock_keeper_id])
+    stock_keeper: Mapped["User | None"] = relationship(foreign_keys=[stock_keeper_id])
     cashier: Mapped[User | None] = relationship(foreign_keys=[cashier_id])
