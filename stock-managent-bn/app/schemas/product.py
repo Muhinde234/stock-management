@@ -45,7 +45,7 @@ class ProductRead(ProductBase):
 
     id: int
     sku: str
-    stock_id: int
+    stock_id: int | None
     is_deleted: bool
     created_at: datetime
     updated_at: datetime

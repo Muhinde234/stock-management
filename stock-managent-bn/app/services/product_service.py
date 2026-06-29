@@ -7,10 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.category import Category
 from app.models.enums import ProductStatus, StockStatus
 from app.models.product import Product
-from app.models.shop import Shop
-from app.models.stock import Stock
 from app.models.unit import Unit
-from app.models.user import User
 from app.schemas.product import ProductCreate, ProductUpdate
 from app.services.exceptions import ConflictError, NotFoundError
 
@@ -19,22 +16,7 @@ def _generate_sku() -> str:
     return f"SKU-{uuid4().hex[:10].upper()}"
 
 
-def _resolve_stock_id(db: Session, current_user: User) -> int:
-    stocks = list(
-        db.execute(
-            select(Stock).join(Shop, Stock.shop_id == Shop.id).where(Shop.manager_id == current_user.id)
-        ).scalars()
-    )
-    if len(stocks) == 1:
-        return stocks[0].id
-    if len(stocks) == 0:
-        raise NotFoundError("You manage no stock; create one before registering products")
-    raise ConflictError("You manage multiple stocks; assign the product to one via PATCH /products/{id} afterward")
-
-
-def register_product(db: Session, data: ProductCreate, current_user: User) -> Product:
-    stock_id = _resolve_stock_id(db, current_user)
-
+def register_product(db: Session, data: ProductCreate) -> Product:
     if db.get(Category, data.category_id) is None:
         raise NotFoundError(f"Category {data.category_id} not found")
     if db.get(Unit, data.unit_id) is None:
@@ -44,7 +26,7 @@ def register_product(db: Session, data: ProductCreate, current_user: User) -> Pr
     if db.execute(select(Product.id).where(Product.sku == sku)).first():
         raise ConflictError(f"SKU '{sku}' already exists")
 
-    product = Product(**data.model_dump(), sku=sku, stock_id=stock_id)
+    product = Product(**data.model_dump(), sku=sku)
     db.add(product)
     db.commit()
     db.refresh(product)
