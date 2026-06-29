@@ -11,6 +11,8 @@ class PurchaseOrderCreate(BaseModel):
     scanned_code: str
     product_id: int
     quantity: int = Field(gt=0)
+    supplier_name: str | None = None
+    supplier_phone: str | None = None
 
 
 class PurchaseOrderRead(BaseModel):
@@ -24,4 +26,6 @@ class PurchaseOrderRead(BaseModel):
     quantity_unit: str
     unit_price: Decimal
     received_by_id: int
+    supplier_name: str | None
+    supplier_phone: str | None
     created_at: datetime

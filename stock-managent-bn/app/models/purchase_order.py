@@ -38,5 +38,8 @@ class PurchaseOrder(Base, TimestampMixin):
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True
     )
 
+    supplier_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    supplier_phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
     product: Mapped["Product"] = relationship()
     received_by: Mapped["User"] = relationship()
