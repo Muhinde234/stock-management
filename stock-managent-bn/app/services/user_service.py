@@ -79,10 +79,12 @@ def create_user(db: Session, data: UserCreate, created_by: User) -> User:
     return user
 
 
-def list_users(db: Session, *, shop_id: int | None = None) -> list[User]:
+def list_users(db: Session, *, shop_id: int | None = None, role: UserRole | None = None) -> list[User]:
     stmt = select(User).order_by(User.username)
     if shop_id is not None:
         stmt = stmt.where(User.shop_id == shop_id)
+    if role is not None:
+        stmt = stmt.where(User.role == role)
     return list(db.execute(stmt).scalars().all())
 
 
