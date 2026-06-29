@@ -23,26 +23,8 @@ def create_stock(db: Session, data: StockCreate, current_user: User) -> Stock:
     if current_user.role == UserRole.MANAGER and shop.manager_id != current_user.id:
         raise PermissionDeniedError("You can only create stocks for the shop you manage")
 
-    stock_keeper = None
-    if data.stock_keeper_id is not None:
-        stock_keeper = db.get(User, data.stock_keeper_id)
-        if stock_keeper is None or stock_keeper.role != UserRole.STOCK_KEEPER:
-            raise ConflictError(f"User {data.stock_keeper_id} is not a stock keeper")
-
-    cashier = None
-    if data.cashier_id is not None:
-        cashier = db.get(User, data.cashier_id)
-        if cashier is None or cashier.role != UserRole.CASHIER:
-            raise ConflictError(f"User {data.cashier_id} is not a cashier")
-
-    stock = Stock(**data.model_dump())
+    stock = Stock(name=data.name, shop_id=data.shop_id)
     db.add(stock)
-
-    if stock_keeper is not None:
-        stock_keeper.shop_id = shop.id
-    if cashier is not None:
-        cashier.shop_id = shop.id
-
     db.commit()
     db.refresh(stock)
     return stock
