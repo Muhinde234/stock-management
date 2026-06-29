@@ -3,10 +3,9 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_admin
 from app.models.enums import ProductStatus, StockStatus
-from app.models.user import User
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.services import product_service
-from app.services.exceptions import ConflictError, NotFoundError, PermissionDeniedError
+from app.services.exceptions import ConflictError, NotFoundError
 
 router = APIRouter(prefix="/products", tags=["products"], dependencies=[Depends(get_current_user)])
 
@@ -19,17 +18,13 @@ router = APIRouter(prefix="/products", tags=["products"], dependencies=[Depends(
     description="Add a product you sell",
     dependencies=[Depends(require_admin)],
 )
-def register_product(
-    data: ProductCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+def register_product(data: ProductCreate, db: Session = Depends(get_db)):
     try:
-        return product_service.register_product(db, data, current_user)
+        return product_service.register_product(db, data)
     except ConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except PermissionDeniedError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
 @router.get("", response_model=list[ProductRead])

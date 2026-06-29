@@ -21,7 +21,7 @@ def create_purchase_order(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return purchase_order_service.record_purchase_order(db, data, received_by_id=current_user.id)
+        return purchase_order_service.record_purchase_order(db, data, current_user)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ConflictError as exc:

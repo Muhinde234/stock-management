@@ -34,7 +34,9 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     category_id: Mapped[int] = mapped_column(
         ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False, index=True
     )
-    stock_id: Mapped[int] = mapped_column(ForeignKey("stocks.id", ondelete="RESTRICT"), nullable=False, index=True)
+    stock_id: Mapped[int | None] = mapped_column(
+        ForeignKey("stocks.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
 
     sku: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
 
@@ -58,6 +60,6 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     category: Mapped["Category"] = relationship(back_populates="products")
-    stock: Mapped["Stock"] = relationship()
+    stock: Mapped["Stock | None"] = relationship()
     unit: Mapped["Unit"] = relationship(back_populates="products")
     sale_items: Mapped[list["SaleItem"]] = relationship(back_populates="product")

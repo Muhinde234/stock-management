@@ -1,13 +1,36 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.models.enums import UserRole
 from app.models.product import Product
 from app.models.purchase_order import PurchaseOrder
+from app.models.shop import Shop
+from app.models.stock import Stock
+from app.models.user import User
 from app.schemas.purchase_order import PurchaseOrderCreate
 from app.services.exceptions import ConflictError, NotFoundError
 
 
-def record_purchase_order(db: Session, data: PurchaseOrderCreate, received_by_id: int) -> PurchaseOrder:
+def _resolve_stock_for_purchase(db: Session, current_user: User) -> int:
+    if current_user.role == UserRole.STOCK_KEEPER:
+        stock = db.execute(select(Stock).where(Stock.stock_keeper_id == current_user.id)).scalars().first()
+        if stock is None:
+            raise ConflictError("You have no stock assigned; ask your manager to assign you to one first")
+        return stock.id
+
+    stocks = list(
+        db.execute(
+            select(Stock).join(Shop, Stock.shop_id == Shop.id).where(Shop.manager_id == current_user.id)
+        ).scalars()
+    )
+    if len(stocks) == 1:
+        return stocks[0].id
+    if len(stocks) == 0:
+        raise ConflictError("You manage no stock; create one before recording a purchase")
+    raise ConflictError("You manage multiple stocks; have the relevant stock keeper record this purchase instead")
+
+
+def record_purchase_order(db: Session, data: PurchaseOrderCreate, current_user: User) -> PurchaseOrder:
     try:
         product = db.execute(
             select(Product)
@@ -20,6 +43,9 @@ def record_purchase_order(db: Session, data: PurchaseOrderCreate, received_by_id
         if product.buying_price is None:
             raise ConflictError(f"Product {product.id} has no buying price set; cannot record a purchase")
 
+        if product.stock_id is None:
+            product.stock_id = _resolve_stock_for_purchase(db, current_user)
+
         product.quantity_in_stock += data.quantity
 
         purchase_order = PurchaseOrder(
@@ -29,7 +55,7 @@ def record_purchase_order(db: Session, data: PurchaseOrderCreate, received_by_id
             quantity=data.quantity,
             quantity_unit=product.unit.name,
             unit_price=product.buying_price,
-            received_by_id=received_by_id,
+            received_by_id=current_user.id,
         )
         db.add(purchase_order)
         db.commit()
