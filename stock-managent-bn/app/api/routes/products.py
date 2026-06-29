@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_stock_keeper
+from app.api.deps import get_current_user, get_db, require_admin
 from app.models.enums import ProductStatus, StockStatus
 from app.models.user import User
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.services import product_service
-from app.services.exceptions import ConflictError, NotFoundError
+from app.services.exceptions import ConflictError, NotFoundError, PermissionDeniedError
 
 router = APIRouter(prefix="/products", tags=["products"], dependencies=[Depends(get_current_user)])
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/products", tags=["products"], dependencies=[Depends(
     status_code=201,
     summary="Register Product",
     description="Add a product you sell",
-    dependencies=[Depends(require_stock_keeper)],
+    dependencies=[Depends(require_admin)],
 )
 def register_product(
     data: ProductCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
@@ -28,6 +28,8 @@ def register_product(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionDeniedError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
 @router.get("", response_model=list[ProductRead])
@@ -69,7 +71,7 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.patch("/{product_id}", response_model=ProductRead, dependencies=[Depends(require_stock_keeper)])
+@router.patch("/{product_id}", response_model=ProductRead, dependencies=[Depends(require_admin)])
 def update_product(product_id: int, data: ProductUpdate, db: Session = Depends(get_db)):
     try:
         return product_service.update_product(db, product_id, data)
@@ -79,7 +81,7 @@ def update_product(product_id: int, data: ProductUpdate, db: Session = Depends(g
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@router.delete("/{product_id}", status_code=204, dependencies=[Depends(require_stock_keeper)])
+@router.delete("/{product_id}", status_code=204, dependencies=[Depends(require_admin)])
 def delete_product(product_id: int, db: Session = Depends(get_db)):
     try:
         product_service.soft_delete_product(db, product_id)

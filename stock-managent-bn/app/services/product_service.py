@@ -5,13 +5,14 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models.category import Category
-from app.models.enums import ProductStatus, StockStatus
+from app.models.enums import ProductStatus, StockStatus, UserRole
 from app.models.product import Product
+from app.models.shop import Shop
 from app.models.stock import Stock
 from app.models.unit import Unit
 from app.models.user import User
 from app.schemas.product import ProductCreate, ProductUpdate
-from app.services.exceptions import ConflictError, NotFoundError
+from app.services.exceptions import ConflictError, NotFoundError, PermissionDeniedError
 
 
 def _generate_sku() -> str:
@@ -20,18 +21,23 @@ def _generate_sku() -> str:
 
 def _resolve_stock_id(db: Session, data: ProductCreate, current_user: User) -> int:
     if data.stock_id is not None:
-        if db.get(Stock, data.stock_id) is None:
+        stock = db.get(Stock, data.stock_id)
+        if stock is None:
             raise NotFoundError(f"Stock {data.stock_id} not found")
+        if current_user.role == UserRole.MANAGER and stock.shop.manager_id != current_user.id:
+            raise PermissionDeniedError("You can only register products for the shop you manage")
         return data.stock_id
 
-    stock = db.execute(
-        select(Stock).where(Stock.stock_keeper_id == current_user.id)
-    ).scalars().first()
-    if stock is None:
-        raise NotFoundError(
-            "No stock_id provided and current user has no assigned store; specify stock_id explicitly"
-        )
-    return stock.id
+    stocks = list(
+        db.execute(
+            select(Stock).join(Shop, Stock.shop_id == Shop.id).where(Shop.manager_id == current_user.id)
+        ).scalars()
+    )
+    if len(stocks) == 1:
+        return stocks[0].id
+    if len(stocks) == 0:
+        raise NotFoundError("No stock_id provided and you manage no stock; specify stock_id explicitly")
+    raise ConflictError("You manage multiple stocks; specify stock_id explicitly")
 
 
 def register_product(db: Session, data: ProductCreate, current_user: User) -> Product:
