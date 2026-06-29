@@ -10,6 +10,12 @@ class StockCreate(BaseModel):
     cashier_id: int | None = None
 
 
+class StockUpdate(BaseModel):
+    name: str | None = None
+    stock_keeper_id: int | None = None
+    cashier_id: int | None = None
+
+
 class StockRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

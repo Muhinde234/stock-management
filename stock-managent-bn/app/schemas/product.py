@@ -5,39 +5,38 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.models.enums import ProductStatus, StockStatus
 from app.schemas.category import CategoryRead
+from app.schemas.unit import UnitRead
 
 
 class ProductBase(BaseModel):
     name: str = Field(alias="productName")
-    quantity_unit: str = Field(alias="quantityUnit")
-    buying_price: Decimal = Field(alias="productPrice", ge=0)
+    unit_id: int = Field(alias="quantityUnit")
     selling_price: Decimal = Field(alias="sellingPrice", ge=0)
-    description: str | None = None
+    minimum_stock: int = Field(alias="minimumQuantity", ge=0)
+    buying_price: Decimal | None = Field(default=None, alias="productPrice", ge=0)
     category_id: int
-    stock_id: int
-    quantity_in_stock: int = Field(default=0, ge=0)
-    minimum_stock: int = Field(default=0, ge=0)
+    quantity_in_stock: int = Field(default=0, alias="initialQuantity", ge=0)
+    custom_properties: dict[str, str] | None = Field(default=None, alias="additionalProperties")
     expiry_date: date | None = None
     status: ProductStatus = ProductStatus.ACTIVE
 
 
 class ProductCreate(ProductBase):
-    sku: str
-    barcode: str | None = None
+    sku: str | None = None
+    stock_id: int | None = None
 
 
 class ProductUpdate(BaseModel):
     name: str | None = Field(default=None, alias="productName")
-    quantity_unit: str | None = Field(default=None, alias="quantityUnit")
-    buying_price: Decimal | None = Field(default=None, alias="productPrice", ge=0)
+    unit_id: int | None = Field(default=None, alias="quantityUnit")
     selling_price: Decimal | None = Field(default=None, alias="sellingPrice", ge=0)
-    description: str | None = None
+    minimum_stock: int | None = Field(default=None, alias="minimumQuantity", ge=0)
+    buying_price: Decimal | None = Field(default=None, alias="productPrice", ge=0)
     category_id: int | None = None
     stock_id: int | None = None
     sku: str | None = None
-    barcode: str | None = None
-    quantity_in_stock: int | None = Field(default=None, ge=0)
-    minimum_stock: int | None = Field(default=None, ge=0)
+    quantity_in_stock: int | None = Field(default=None, alias="initialQuantity", ge=0)
+    custom_properties: dict[str, str] | None = Field(default=None, alias="additionalProperties")
     expiry_date: date | None = None
     status: ProductStatus | None = None
 
@@ -47,11 +46,12 @@ class ProductRead(ProductBase):
 
     id: int
     sku: str
-    barcode: str | None
+    stock_id: int
     is_deleted: bool
     created_at: datetime
     updated_at: datetime
     category: CategoryRead | None = None
+    unit: UnitRead | None = None
 
     @computed_field
     @property
@@ -60,12 +60,14 @@ class ProductRead(ProductBase):
 
     @computed_field
     @property
-    def profit_per_unit(self) -> Decimal:
+    def profit_per_unit(self) -> Decimal | None:
+        if self.buying_price is None:
+            return None
         return self.selling_price - self.buying_price
 
     @computed_field
     @property
-    def profit_margin_percent(self) -> Decimal:
-        if self.selling_price == 0:
-            return Decimal("0")
+    def profit_margin_percent(self) -> Decimal | None:
+        if self.buying_price is None or self.selling_price == 0:
+            return None
         return (self.profit_per_unit / self.selling_price * 100).quantize(Decimal("0.01"))

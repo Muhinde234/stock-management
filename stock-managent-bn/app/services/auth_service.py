@@ -15,5 +15,7 @@ def authenticate(db: Session, email: str, password: str) -> str:
         raise InvalidCredentialsError("Invalid email or password")
     if not verify_password(password, user.hashed_password):
         raise InvalidCredentialsError("Invalid email or password")
+    if not user.is_active:
+        raise InvalidCredentialsError("This account has been deactivated")
 
     return create_access_token(subject=str(user.id), role=user.role.value)

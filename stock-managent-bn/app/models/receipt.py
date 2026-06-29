@@ -20,6 +20,7 @@ class Receipt(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     receipt_number: Mapped[str] = mapped_column(String(32), unique=True, nullable=False, index=True)
     client_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    client_phone: Mapped[str] = mapped_column(String(32), nullable=False)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, server_default="0", nullable=False)
 
     checked_out_by_id: Mapped[int] = mapped_column(

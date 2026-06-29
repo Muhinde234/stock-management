@@ -6,7 +6,7 @@ from app.models.enums import StockMovementStatus
 
 
 class StockMovementCreate(BaseModel):
-    barcode: str
+    sku: str
     status: StockMovementStatus
     quantity: int = Field(gt=0)
 

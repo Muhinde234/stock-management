@@ -8,6 +8,7 @@ from app.models.sale_item import SaleItem
 from app.models.shop import Shop
 from app.models.stock import Stock
 from app.models.stock_movement import StockMovement
+from app.models.unit import Unit
 from app.models.user import User
 
 __all__ = [
@@ -21,5 +22,6 @@ __all__ = [
     "Shop",
     "Stock",
     "StockMovement",
+    "Unit",
     "User",
 ]

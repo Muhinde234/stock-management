@@ -60,7 +60,16 @@ def update_shop(db: Session, shop_id: int, data: ShopUpdate) -> Shop:
 def assign_manager(db: Session, shop_id: int, data: ShopManagerAssign) -> Shop:
     shop = get_shop(db, shop_id)
     _validate_manager(db, data.manager_id)
+
+    if shop.manager_id is not None and shop.manager_id != data.manager_id:
+        previous_manager = db.get(User, shop.manager_id)
+        if previous_manager is not None:
+            previous_manager.shop_id = None
+
     shop.manager_id = data.manager_id
+    if data.manager_id is not None:
+        db.get(User, data.manager_id).shop_id = shop.id
+
     db.commit()
     db.refresh(shop)
     return shop

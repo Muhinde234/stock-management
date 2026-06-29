@@ -13,6 +13,12 @@ class UserCreate(BaseModel):
     shop_id: int | None = None
 
 
+class UserUpdate(BaseModel):
+    email: EmailStr | None = None
+    full_name: str | None = None
+    role: UserRole | None = None
+
+
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -21,5 +27,6 @@ class UserRead(BaseModel):
     email: str | None
     full_name: str | None
     role: UserRole
+    is_active: bool
     created_at: datetime
     shop_id: int | None = None

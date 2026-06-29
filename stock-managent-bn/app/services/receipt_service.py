@@ -17,16 +17,16 @@ def _generate_receipt_number() -> str:
     return f"RCT-{datetime.now(timezone.utc):%Y%m%d}-{uuid4().hex[:8].upper()}"
 
 
-def _lock_product(db: Session, *, product_id: int | None, barcode: str | None) -> Product:
+def _lock_product(db: Session, *, product_id: int | None, sku: str | None) -> Product:
     stmt = select(Product).with_for_update()
     if product_id is not None:
         stmt = stmt.where(Product.id == product_id)
     else:
-        stmt = stmt.where(Product.barcode == barcode)
+        stmt = stmt.where(Product.sku == sku)
 
     product = db.execute(stmt).scalar_one_or_none()
     if product is None or product.is_deleted:
-        raise NotFoundError(f"Product not found (id={product_id}, barcode={barcode})")
+        raise NotFoundError(f"Product not found (id={product_id}, sku={sku})")
     if product.status != ProductStatus.ACTIVE:
         raise NotFoundError(f"Product '{product.sku}' is not active and cannot be checked out")
     return product
@@ -37,13 +37,14 @@ def create_receipt(db: Session, data: ReceiptCreate, checked_out_by_id: int) -> 
         receipt = Receipt(
             receipt_number=_generate_receipt_number(),
             client_name=data.client_name,
+            client_phone=data.client_phone,
             checked_out_by_id=checked_out_by_id,
         )
         db.add(receipt)
 
         total = Decimal("0")
         for item in data.items:
-            product = _lock_product(db, product_id=item.product_id, barcode=item.barcode)
+            product = _lock_product(db, product_id=item.product_id, sku=item.sku)
             if product.quantity_in_stock < item.quantity:
                 raise InsufficientStockError(product.sku, product.quantity_in_stock, item.quantity)
 
@@ -73,7 +74,9 @@ def create_receipt(db: Session, data: ReceiptCreate, checked_out_by_id: int) -> 
 
 def get_receipt(db: Session, receipt_id: int) -> Receipt:
     receipt = db.execute(
-        select(Receipt).where(Receipt.id == receipt_id).options(selectinload(Receipt.items))
+        select(Receipt)
+        .where(Receipt.id == receipt_id)
+        .options(selectinload(Receipt.items).selectinload(ReceiptItem.product))
     ).scalar_one_or_none()
     if receipt is None:
         raise NotFoundError(f"Receipt {receipt_id} not found")
@@ -83,7 +86,7 @@ def get_receipt(db: Session, receipt_id: int) -> Receipt:
 def list_receipts(db: Session, *, skip: int = 0, limit: int = 50) -> list[Receipt]:
     stmt = (
         select(Receipt)
-        .options(selectinload(Receipt.items))
+        .options(selectinload(Receipt.items).selectinload(ReceiptItem.product))
         .order_by(Receipt.created_at.desc())
         .offset(skip)
         .limit(limit)

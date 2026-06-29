@@ -24,5 +24,5 @@ class Shop(Base, TimestampMixin, SoftDeleteMixin):
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
-    manager: Mapped[User | None] = relationship()
+    manager: Mapped[User | None] = relationship(foreign_keys=[manager_id])
     stocks: Mapped[list["Stock"]] = relationship(back_populates="shop")

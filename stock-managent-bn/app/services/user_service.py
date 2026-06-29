@@ -5,7 +5,7 @@ from app.core.security import hash_password
 from app.models.enums import UserRole
 from app.models.shop import Shop
 from app.models.user import User
-from app.schemas.user import UserCreate
+from app.schemas.user import UserCreate, UserUpdate
 from app.services.exceptions import ConflictError, NotFoundError, PermissionDeniedError
 
 MANAGER_CREATABLE_ROLES = {UserRole.STOCK_KEEPER, UserRole.CASHIER}
@@ -40,6 +40,7 @@ def create_user(db: Session, data: UserCreate, created_by: User) -> User:
             full_name=data.full_name,
             role=data.role,
             hashed_password=hash_password(data.password),
+            shop_id=shop.id if shop is not None else None,
         )
         db.add(user)
         db.flush()
@@ -53,16 +54,58 @@ def create_user(db: Session, data: UserCreate, created_by: User) -> User:
         raise
 
     db.refresh(user)
-    user.shop_id = shop.id if shop is not None else None
     return user
 
 
-def list_users(db: Session) -> list[User]:
-    return list(db.execute(select(User).order_by(User.username)).scalars().all())
+def list_users(db: Session, *, shop_id: int | None = None) -> list[User]:
+    stmt = select(User).order_by(User.username)
+    if shop_id is not None:
+        stmt = stmt.where(User.shop_id == shop_id)
+    return list(db.execute(stmt).scalars().all())
 
 
 def get_user(db: Session, user_id: int) -> User:
     user = db.get(User, user_id)
     if user is None:
         raise NotFoundError(f"User {user_id} not found")
+    return user
+
+
+def update_user(db: Session, user_id: int, data: UserUpdate, updated_by: User) -> User:
+    user = get_user(db, user_id)
+
+    if updated_by.role == UserRole.MANAGER and user.role not in MANAGER_CREATABLE_ROLES:
+        raise PermissionDeniedError("A manager can only update stock keeper or cashier accounts")
+
+    updates = data.model_dump(exclude_unset=True)
+
+    new_role = updates.get("role", user.role)
+    if updated_by.role == UserRole.MANAGER and new_role not in MANAGER_CREATABLE_ROLES:
+        raise PermissionDeniedError(
+            f"A manager can only assign stock keeper or cashier roles, not '{new_role.value}'"
+        )
+
+    if "email" in updates and updates["email"] != user.email:
+        if db.execute(select(User.id).where(User.email == updates["email"])).first():
+            raise ConflictError(f"Email '{updates['email']}' already exists")
+
+    for field, value in updates.items():
+        setattr(user, field, value)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def deactivate_user(db: Session, user_id: int, deactivated_by: User) -> User:
+    user = get_user(db, user_id)
+
+    if deactivated_by.role == UserRole.MANAGER and user.role not in MANAGER_CREATABLE_ROLES:
+        raise PermissionDeniedError("A manager can only deactivate stock keeper or cashier accounts")
+    if user.id == deactivated_by.id:
+        raise ConflictError("You cannot deactivate your own account")
+
+    user.is_active = False
+    db.commit()
+    db.refresh(user)
     return user
