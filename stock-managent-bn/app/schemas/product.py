@@ -15,7 +15,6 @@ class ProductBase(BaseModel):
     minimum_stock: int = Field(alias="minimumQuantity", ge=0)
     buying_price: Decimal | None = Field(default=None, alias="productPrice", ge=0)
     category_id: int
-    quantity_in_stock: int = Field(default=0, alias="initialQuantity", ge=0)
     custom_properties: dict[str, str] | None = Field(default=None, alias="additionalProperties")
     expiry_date: date | None = None
     status: ProductStatus = ProductStatus.ACTIVE
@@ -35,7 +34,6 @@ class ProductUpdate(BaseModel):
     stock_id: int | None = None
     sku: str | None = None
     barcode: str | None = None
-    quantity_in_stock: int | None = Field(default=None, alias="initialQuantity", ge=0)
     custom_properties: dict[str, str] | None = Field(default=None, alias="additionalProperties")
     expiry_date: date | None = None
     status: ProductStatus | None = None
@@ -48,6 +46,7 @@ class ProductRead(ProductBase):
     sku: str
     barcode: str | None
     stock_id: int | None
+    quantity_in_stock: int = Field(alias="initialQuantity")
     is_deleted: bool
     created_at: datetime
     updated_at: datetime
