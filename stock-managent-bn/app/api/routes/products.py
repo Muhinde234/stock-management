@@ -11,12 +11,19 @@ from app.services.exceptions import ConflictError, NotFoundError
 router = APIRouter(prefix="/products", tags=["products"], dependencies=[Depends(get_current_user)])
 
 
-@router.post("", response_model=ProductRead, status_code=201, dependencies=[Depends(require_stock_keeper)])
-def create_product(
+@router.post(
+    "/register",
+    response_model=ProductRead,
+    status_code=201,
+    summary="Register Product",
+    description="Add a product you sell",
+    dependencies=[Depends(require_stock_keeper)],
+)
+def register_product(
     data: ProductCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     try:
-        return product_service.create_product(db, data, current_user)
+        return product_service.register_product(db, data, current_user)
     except ConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except NotFoundError as exc:

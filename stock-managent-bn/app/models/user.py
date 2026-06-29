@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String
+from sqlalchemy import ForeignKey, String
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -11,6 +11,7 @@ from app.models.enums import UserRole
 
 if TYPE_CHECKING:
     from app.models.sale import Sale
+    from app.models.shop import Shop
 
 
 class User(Base, TimestampMixin):
@@ -27,5 +28,9 @@ class User(Base, TimestampMixin):
         server_default=UserRole.CASHIER.value,
         nullable=False,
     )
+    shop_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shops.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
+    shop: Mapped["Shop | None"] = relationship(foreign_keys=[shop_id])
     sales: Mapped[list["Sale"]] = relationship(back_populates="cashier")

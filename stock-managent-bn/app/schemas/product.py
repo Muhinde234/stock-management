@@ -5,15 +5,16 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.models.enums import ProductStatus, StockStatus
 from app.schemas.category import CategoryRead
+from app.schemas.unit import UnitRead
 
 
 class ProductBase(BaseModel):
     name: str = Field(alias="productName")
-    quantity_unit: str = Field(alias="quantityUnit")
+    unit_id: int = Field(alias="quantityUnit")
     selling_price: Decimal = Field(alias="sellingPrice", ge=0)
     minimum_stock: int = Field(alias="minimumQuantity", ge=0)
     buying_price: Decimal | None = Field(default=None, alias="productPrice", ge=0)
-    category_id: int | None = None
+    category_id: int
     quantity_in_stock: int = Field(default=0, alias="initialQuantity", ge=0)
     custom_properties: dict[str, str] | None = Field(default=None, alias="additionalProperties")
     expiry_date: date | None = None
@@ -27,7 +28,7 @@ class ProductCreate(ProductBase):
 
 class ProductUpdate(BaseModel):
     name: str | None = Field(default=None, alias="productName")
-    quantity_unit: str | None = Field(default=None, alias="quantityUnit")
+    unit_id: int | None = Field(default=None, alias="quantityUnit")
     selling_price: Decimal | None = Field(default=None, alias="sellingPrice", ge=0)
     minimum_stock: int | None = Field(default=None, alias="minimumQuantity", ge=0)
     buying_price: Decimal | None = Field(default=None, alias="productPrice", ge=0)
@@ -50,6 +51,7 @@ class ProductRead(ProductBase):
     created_at: datetime
     updated_at: datetime
     category: CategoryRead | None = None
+    unit: UnitRead | None = None
 
     @computed_field
     @property

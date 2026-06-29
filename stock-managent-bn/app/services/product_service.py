@@ -8,6 +8,7 @@ from app.models.category import Category
 from app.models.enums import ProductStatus, StockStatus
 from app.models.product import Product
 from app.models.stock import Stock
+from app.models.unit import Unit
 from app.models.user import User
 from app.schemas.product import ProductCreate, ProductUpdate
 from app.services.exceptions import ConflictError, NotFoundError
@@ -33,11 +34,13 @@ def _resolve_stock_id(db: Session, data: ProductCreate, current_user: User) -> i
     return stock.id
 
 
-def create_product(db: Session, data: ProductCreate, current_user: User) -> Product:
+def register_product(db: Session, data: ProductCreate, current_user: User) -> Product:
     stock_id = _resolve_stock_id(db, data, current_user)
 
-    if data.category_id is not None and db.get(Category, data.category_id) is None:
+    if db.get(Category, data.category_id) is None:
         raise NotFoundError(f"Category {data.category_id} not found")
+    if db.get(Unit, data.unit_id) is None:
+        raise NotFoundError(f"Unit {data.unit_id} not found")
 
     sku = data.sku or _generate_sku()
     if db.execute(select(Product.id).where(Product.sku == sku)).first():

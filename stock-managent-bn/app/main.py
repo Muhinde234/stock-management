@@ -12,6 +12,7 @@ from app.api.routes import (
     shops,
     stock_movements,
     stocks,
+    units,
     users,
 )
 from app.core.config import settings
@@ -37,6 +38,7 @@ app.include_router(shops.router)
 app.include_router(stocks.router)
 app.include_router(receipts.router)
 app.include_router(dashboard.router)
+app.include_router(units.router)
 
 
 @app.get("/health")
