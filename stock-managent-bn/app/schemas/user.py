@@ -11,6 +11,7 @@ class UserCreate(BaseModel):
     full_name: str | None = None
     role: UserRole
     shop_id: int | None = None
+    stock_id: int | None = None
 
 
 class UserUpdate(BaseModel):

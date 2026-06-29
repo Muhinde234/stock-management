@@ -4,11 +4,13 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from app.models.enums import UserRole
 from app.models.shop import Shop
+from app.models.stock import Stock
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 from app.services.exceptions import ConflictError, NotFoundError, PermissionDeniedError
 
 MANAGER_CREATABLE_ROLES = {UserRole.STOCK_KEEPER, UserRole.CASHIER}
+STOCK_ASSIGNABLE_ROLES = {UserRole.STOCK_KEEPER, UserRole.CASHIER}
 
 
 def create_user(db: Session, data: UserCreate, created_by: User) -> User:
@@ -19,6 +21,8 @@ def create_user(db: Session, data: UserCreate, created_by: User) -> User:
 
     if data.shop_id is not None and data.role != UserRole.MANAGER:
         raise ConflictError("shop_id can only be assigned when creating a manager")
+    if data.stock_id is not None and data.role not in STOCK_ASSIGNABLE_ROLES:
+        raise ConflictError("stock_id can only be assigned when creating a stock keeper or cashier")
 
     try:
         if db.execute(select(User.id).where(User.email == data.email)).first():
@@ -34,19 +38,37 @@ def create_user(db: Session, data: UserCreate, created_by: User) -> User:
             if shop is None or shop.is_deleted:
                 raise NotFoundError(f"Shop {data.shop_id} not found")
 
+        stock = None
+        if data.stock_id is not None:
+            stock = db.get(Stock, data.stock_id)
+            if stock is None:
+                raise NotFoundError(f"Stock {data.stock_id} not found")
+            if created_by.role == UserRole.MANAGER and stock.shop.manager_id != created_by.id:
+                raise PermissionDeniedError("You can only assign users to stocks for the shop you manage")
+            if data.role == UserRole.STOCK_KEEPER and stock.stock_keeper_id is not None:
+                raise ConflictError(f"Stock {data.stock_id} already has a stock keeper assigned")
+            if data.role == UserRole.CASHIER and stock.cashier_id is not None:
+                raise ConflictError(f"Stock {data.stock_id} already has a cashier assigned")
+
         user = User(
             username=username,
             email=data.email,
             full_name=data.full_name,
             role=data.role,
             hashed_password=hash_password(data.password),
-            shop_id=shop.id if shop is not None else None,
+            shop_id=shop.id if shop is not None else (stock.shop_id if stock is not None else None),
         )
         db.add(user)
         db.flush()
 
         if shop is not None:
             shop.manager_id = user.id
+
+        if stock is not None:
+            if data.role == UserRole.STOCK_KEEPER:
+                stock.stock_keeper_id = user.id
+            else:
+                stock.cashier_id = user.id
 
         db.commit()
     except Exception:
