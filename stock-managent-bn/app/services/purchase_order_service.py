@@ -46,6 +46,16 @@ def record_purchase_order(db: Session, data: PurchaseOrderCreate, current_user: 
         if product.stock_id is None:
             product.stock_id = _resolve_stock_for_purchase(db, current_user)
 
+        if product.barcode is None:
+            existing = db.execute(
+                select(Product.id).where(Product.barcode == data.scanned_code)
+            ).scalar_one_or_none()
+            if existing is not None and existing != product.id:
+                raise ConflictError(
+                    f"Scanned code '{data.scanned_code}' is already linked to a different product"
+                )
+            product.barcode = data.scanned_code
+
         product.quantity_in_stock += data.quantity
 
         purchase_order = PurchaseOrder(

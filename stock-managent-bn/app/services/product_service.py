@@ -42,10 +42,10 @@ def get_product(db: Session, product_id: int) -> Product:
 
 def get_product_by_sku(db: Session, sku: str) -> Product:
     product = db.execute(
-        select(Product).where(Product.sku == sku, Product.is_deleted.is_(False))
+        select(Product).where(or_(Product.sku == sku, Product.barcode == sku), Product.is_deleted.is_(False))
     ).scalar_one_or_none()
     if product is None:
-        raise NotFoundError(f"Product with SKU '{sku}' not found")
+        raise NotFoundError(f"Product with SKU/barcode '{sku}' not found")
     return product
 
 
@@ -87,6 +87,10 @@ def update_product(db: Session, product_id: int, data: ProductUpdate) -> Product
     if "sku" in updates and updates["sku"] != product.sku:
         if db.execute(select(Product.id).where(Product.sku == updates["sku"])).first():
             raise ConflictError(f"SKU '{updates['sku']}' already exists")
+
+    if "barcode" in updates and updates["barcode"] is not None and updates["barcode"] != product.barcode:
+        if db.execute(select(Product.id).where(Product.barcode == updates["barcode"])).first():
+            raise ConflictError(f"Barcode '{updates['barcode']}' already exists")
 
     for field, value in updates.items():
         setattr(product, field, value)

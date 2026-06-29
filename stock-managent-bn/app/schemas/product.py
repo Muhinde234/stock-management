@@ -34,6 +34,7 @@ class ProductUpdate(BaseModel):
     category_id: int | None = None
     stock_id: int | None = None
     sku: str | None = None
+    barcode: str | None = None
     quantity_in_stock: int | None = Field(default=None, alias="initialQuantity", ge=0)
     custom_properties: dict[str, str] | None = Field(default=None, alias="additionalProperties")
     expiry_date: date | None = None
@@ -45,6 +46,7 @@ class ProductRead(ProductBase):
 
     id: int
     sku: str
+    barcode: str | None
     stock_id: int | None
     is_deleted: bool
     created_at: datetime
