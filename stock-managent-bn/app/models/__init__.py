@@ -1,8 +1,6 @@
 from app.models.category import Category
 from app.models.product import Product
 from app.models.purchase_order import PurchaseOrder
-from app.models.receipt import Receipt
-from app.models.receipt_item import ReceiptItem
 from app.models.sale import Sale
 from app.models.sale_item import SaleItem
 from app.models.shop import Shop
@@ -15,8 +13,6 @@ __all__ = [
     "Category",
     "Product",
     "PurchaseOrder",
-    "Receipt",
-    "ReceiptItem",
     "Sale",
     "SaleItem",
     "Shop",

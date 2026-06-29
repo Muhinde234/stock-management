@@ -37,6 +37,8 @@ def complete_sale(db: Session, data: SaleCreate, cashier_id: int) -> Sale:
         sale = Sale(
             sale_number=_generate_sale_number(),
             cashier_id=cashier_id,
+            client_name=data.client_name,
+            client_phone=data.client_phone,
             payment_method=data.payment_method,
             discount_amount=data.discount_amount,
             tax_amount=data.tax_amount,
@@ -90,7 +92,7 @@ def complete_sale(db: Session, data: SaleCreate, cashier_id: int) -> Sale:
 
 def get_sale(db: Session, sale_id: int) -> Sale:
     sale = db.execute(
-        select(Sale).where(Sale.id == sale_id).options(selectinload(Sale.items))
+        select(Sale).where(Sale.id == sale_id).options(selectinload(Sale.items).selectinload(SaleItem.product))
     ).scalar_one_or_none()
     if sale is None:
         raise NotFoundError(f"Sale {sale_id} not found")
@@ -100,7 +102,7 @@ def get_sale(db: Session, sale_id: int) -> Sale:
 def list_sales(db: Session, *, skip: int = 0, limit: int = 50) -> list[Sale]:
     stmt = (
         select(Sale)
-        .options(selectinload(Sale.items))
+        .options(selectinload(Sale.items).selectinload(SaleItem.product))
         .order_by(Sale.sale_date.desc())
         .offset(skip)
         .limit(limit)
@@ -111,7 +113,10 @@ def list_sales(db: Session, *, skip: int = 0, limit: int = 50) -> list[Sale]:
 def void_sale(db: Session, sale_id: int) -> Sale:
     try:
         sale = db.execute(
-            select(Sale).where(Sale.id == sale_id).options(selectinload(Sale.items)).with_for_update()
+            select(Sale)
+            .where(Sale.id == sale_id)
+            .options(selectinload(Sale.items).selectinload(SaleItem.product))
+            .with_for_update()
         ).scalar_one_or_none()
         if sale is None:
             raise NotFoundError(f"Sale {sale_id} not found")

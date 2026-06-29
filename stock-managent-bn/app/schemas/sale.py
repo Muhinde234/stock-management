@@ -19,6 +19,8 @@ class SaleItemCreate(BaseModel):
 
 
 class SaleCreate(BaseModel):
+    client_name: str
+    client_phone: str
     items: list[SaleItemCreate]
     discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
     tax_amount: Decimal = Field(default=Decimal("0"), ge=0)
@@ -26,11 +28,20 @@ class SaleCreate(BaseModel):
     cash_received: Decimal | None = Field(default=None, ge=0)
 
 
+class SaleProductRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    sku: str
+
+
 class SaleItemRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     product_id: int
+    product: SaleProductRead
     quantity: int
     unit_price: Decimal
     subtotal: Decimal
@@ -42,6 +53,8 @@ class SaleRead(BaseModel):
     id: int
     sale_number: str
     sale_date: datetime
+    client_name: str
+    client_phone: str
     subtotal: Decimal
     discount_amount: Decimal
     tax_amount: Decimal

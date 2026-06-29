@@ -7,7 +7,6 @@ from app.api.routes import (
     dashboard,
     products,
     purchase_orders,
-    receipts,
     sales,
     shops,
     stock_movements,
@@ -36,7 +35,6 @@ app.include_router(stock_movements.router)
 app.include_router(purchase_orders.router)
 app.include_router(shops.router)
 app.include_router(stocks.router)
-app.include_router(receipts.router)
 app.include_router(dashboard.router)
 app.include_router(units.router)
 
