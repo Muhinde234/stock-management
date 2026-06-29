@@ -55,6 +55,8 @@ def record_purchase_order(db: Session, data: PurchaseOrderCreate, current_user: 
             quantity=data.quantity,
             quantity_unit=product.unit.name,
             unit_price=product.buying_price,
+            supplier_name=data.supplier_name,
+            supplier_phone=data.supplier_phone,
             received_by_id=current_user.id,
         )
         db.add(purchase_order)
