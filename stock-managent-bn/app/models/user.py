@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -31,6 +31,7 @@ class User(Base, TimestampMixin):
     shop_id: Mapped[int | None] = mapped_column(
         ForeignKey("shops.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
 
     shop: Mapped["Shop | None"] = relationship(foreign_keys=[shop_id])
     sales: Mapped[list["Sale"]] = relationship(back_populates="cashier")

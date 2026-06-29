@@ -49,3 +49,39 @@ def list_purchase_orders(
         stmt = stmt.where(PurchaseOrder.product_id == product_id)
     stmt = stmt.order_by(PurchaseOrder.created_at.desc()).offset(skip).limit(limit)
     return list(db.execute(stmt).scalars().all())
+
+
+def get_purchase_order(db: Session, purchase_order_id: int) -> PurchaseOrder:
+    purchase_order = db.execute(
+        select(PurchaseOrder)
+        .where(PurchaseOrder.id == purchase_order_id)
+        .options(selectinload(PurchaseOrder.product))
+    ).scalar_one_or_none()
+    if purchase_order is None:
+        raise NotFoundError(f"Purchase order {purchase_order_id} not found")
+    return purchase_order
+
+
+def delete_purchase_order(db: Session, purchase_order_id: int) -> None:
+    try:
+        purchase_order = db.get(PurchaseOrder, purchase_order_id)
+        if purchase_order is None:
+            raise NotFoundError(f"Purchase order {purchase_order_id} not found")
+
+        product = db.execute(
+            select(Product).where(Product.id == purchase_order.product_id).with_for_update()
+        ).scalar_one_or_none()
+        if product is not None:
+            if product.quantity_in_stock < purchase_order.quantity:
+                raise ConflictError(
+                    f"Cannot delete purchase order {purchase_order_id}: "
+                    f"product stock ({product.quantity_in_stock}) is lower than the quantity it added "
+                    f"({purchase_order.quantity}), some of it has already been sold or moved out"
+                )
+            product.quantity_in_stock -= purchase_order.quantity
+
+        db.delete(purchase_order)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise

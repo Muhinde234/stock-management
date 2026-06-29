@@ -33,6 +33,8 @@ def get_current_user(
     user = db.get(User, int(payload["sub"]))
     if user is None:
         raise HTTPException(status_code=401, detail="User no longer exists")
+    if not user.is_active:
+        raise HTTPException(status_code=401, detail="This account has been deactivated")
     return user
 
 

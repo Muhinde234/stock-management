@@ -43,3 +43,14 @@ def void_sale(sale_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except PaymentFailedError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/{sale_id}", response_model=SaleRead, dependencies=[Depends(require_admin)])
+def delete_sale(sale_id: int, db: Session = Depends(get_db)):
+    """Deleting a sale voids it: stock is restored and the row is kept as VOIDED for audit."""
+    try:
+        return sale_service.void_sale(db, sale_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PaymentFailedError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
