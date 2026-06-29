@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_admin
+from app.models.enums import UserRole
 from app.models.user import User
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.services import user_service
@@ -23,8 +24,23 @@ def create_user(data: UserCreate, db: Session = Depends(get_db), current_user: U
 
 
 @router.get("", response_model=list[UserRead])
-def list_users(shop_id: int | None = None, db: Session = Depends(get_db)):
-    return user_service.list_users(db, shop_id=shop_id)
+def list_users(shop_id: int | None = None, role: UserRole | None = None, db: Session = Depends(get_db)):
+    return user_service.list_users(db, shop_id=shop_id, role=role)
+
+
+@router.get("/managers", response_model=list[UserRead])
+def list_managers(shop_id: int | None = None, db: Session = Depends(get_db)):
+    return user_service.list_users(db, shop_id=shop_id, role=UserRole.MANAGER)
+
+
+@router.get("/stock-keepers", response_model=list[UserRead])
+def list_stock_keepers(shop_id: int | None = None, db: Session = Depends(get_db)):
+    return user_service.list_users(db, shop_id=shop_id, role=UserRole.STOCK_KEEPER)
+
+
+@router.get("/cashiers", response_model=list[UserRead])
+def list_cashiers(shop_id: int | None = None, db: Session = Depends(get_db)):
+    return user_service.list_users(db, shop_id=shop_id, role=UserRole.CASHIER)
 
 
 @router.get("/{user_id}", response_model=UserRead)
