@@ -39,6 +39,7 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     sku: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    barcode: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
 
     unit_id: Mapped[int] = mapped_column(ForeignKey("units.id", ondelete="RESTRICT"), nullable=False, index=True)
 
