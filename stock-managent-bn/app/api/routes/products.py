@@ -6,7 +6,7 @@ from app.models.enums import ProductStatus, StockStatus
 from app.models.user import User
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.services import product_service
-from app.services.exceptions import ConflictError, NotFoundError, PermissionDeniedError
+from app.services.exceptions import ConflictError, NotFoundError
 
 router = APIRouter(prefix="/products", tags=["products"], dependencies=[Depends(get_current_user)])
 
@@ -28,8 +28,6 @@ def register_product(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except PermissionDeniedError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
 @router.get("", response_model=list[ProductRead])

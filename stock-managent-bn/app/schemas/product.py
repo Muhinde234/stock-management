@@ -22,8 +22,7 @@ class ProductBase(BaseModel):
 
 
 class ProductCreate(ProductBase):
-    sku: str | None = None
-    stock_id: int | None = None
+    pass
 
 
 class ProductUpdate(BaseModel):
