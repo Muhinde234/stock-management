@@ -5,6 +5,7 @@ from app.api.routes import (
     auth,
     categories,
     dashboard,
+    notifications,
     products,
     purchase_orders,
     sales,
@@ -37,6 +38,7 @@ app.include_router(shops.router)
 app.include_router(stocks.router)
 app.include_router(dashboard.router)
 app.include_router(units.router)
+app.include_router(notifications.router)
 
 
 @app.get("/health")

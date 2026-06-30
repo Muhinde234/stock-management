@@ -6,6 +6,7 @@ from app.models.product import Product
 from app.models.stock_movement import StockMovement
 from app.schemas.stock_movement import StockMovementCreate
 from app.services.exceptions import ConflictError, InsufficientStockError, NotFoundError
+from app.services.notification_service import check_stock_thresholds
 
 
 def record_movement(db: Session, data: StockMovementCreate, performed_by_id: int) -> StockMovement:
@@ -16,10 +17,12 @@ def record_movement(db: Session, data: StockMovementCreate, performed_by_id: int
         if product is None or product.is_deleted:
             raise NotFoundError(f"Product with SKU/barcode '{data.sku}' not found")
 
+        previous_qty = product.quantity_in_stock
         if data.status == StockMovementStatus.STOCK_OUT:
             if product.quantity_in_stock < data.quantity:
                 raise InsufficientStockError(product.sku, product.quantity_in_stock, data.quantity)
             product.quantity_in_stock -= data.quantity
+            check_stock_thresholds(db, product, previous_qty)
         else:
             product.quantity_in_stock += data.quantity
 
@@ -66,6 +69,7 @@ def delete_movement(db: Session, movement_id: int) -> None:
             select(Product).where(Product.id == movement.product_id).with_for_update()
         ).scalar_one_or_none()
         if product is not None:
+            previous_qty = product.quantity_in_stock
             if movement.status == StockMovementStatus.STOCK_IN:
                 if product.quantity_in_stock < movement.quantity:
                     raise ConflictError(
@@ -74,6 +78,7 @@ def delete_movement(db: Session, movement_id: int) -> None:
                         f"({movement.quantity}), some of it has already been moved out"
                     )
                 product.quantity_in_stock -= movement.quantity
+                check_stock_thresholds(db, product, previous_qty)
             else:
                 product.quantity_in_stock += movement.quantity
 

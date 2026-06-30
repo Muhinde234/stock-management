@@ -9,6 +9,7 @@ from app.models.stock import Stock
 from app.models.user import User
 from app.schemas.purchase_order import PurchaseOrderCreate
 from app.services.exceptions import ConflictError, NotFoundError
+from app.services.notification_service import check_stock_thresholds
 
 
 def _resolve_stock_for_purchase(db: Session, current_user: User) -> int:
@@ -116,7 +117,9 @@ def delete_purchase_order(db: Session, purchase_order_id: int) -> None:
                     f"product stock ({product.quantity_in_stock}) is lower than the quantity it added "
                     f"({purchase_order.quantity}), some of it has already been sold or moved out"
                 )
+            previous_qty = product.quantity_in_stock
             product.quantity_in_stock -= purchase_order.quantity
+            check_stock_thresholds(db, product, previous_qty)
 
         db.delete(purchase_order)
         db.commit()

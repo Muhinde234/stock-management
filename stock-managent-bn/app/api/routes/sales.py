@@ -1,7 +1,10 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_admin, require_checkout
+from app.models.enums import SaleStatus
 from app.models.user import User
 from app.schemas.sale import SaleCreate, SaleRead
 from app.services import sale_service
@@ -23,8 +26,26 @@ def create_sale(data: SaleCreate, db: Session = Depends(get_db), current_user: U
 
 
 @router.get("", response_model=list[SaleRead])
-def list_sales(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
-    return sale_service.list_sales(db, skip=skip, limit=limit)
+def list_sales(
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    cashier_id: int | None = None,
+    stock_id: int | None = None,
+    status: SaleStatus | None = None,
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+):
+    return sale_service.list_sales(
+        db,
+        start_date=start_date,
+        end_date=end_date,
+        cashier_id=cashier_id,
+        stock_id=stock_id,
+        status=status,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get("/{sale_id}", response_model=SaleRead)

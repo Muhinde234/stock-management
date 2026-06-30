@@ -39,3 +39,8 @@ class StockStatus(str, enum.Enum):
 class PurchaseType(str, enum.Enum):
     PACKAGE = "package"
     DETAIL = "detail"
+
+
+class NotificationType(str, enum.Enum):
+    LOW_STOCK = "low_stock"
+    OUT_OF_STOCK = "out_of_stock"

@@ -11,6 +11,7 @@ from app.models.sale import Sale
 from app.models.sale_item import SaleItem
 from app.schemas.sale import SaleCreate
 from app.services.exceptions import InsufficientStockError, NotFoundError, PaymentFailedError
+from app.services.notification_service import check_stock_thresholds
 
 
 def _generate_sale_number() -> str:
@@ -51,7 +52,9 @@ def complete_sale(db: Session, data: SaleCreate, cashier_id: int) -> Sale:
             if product.quantity_in_stock < item.quantity:
                 raise InsufficientStockError(product.sku, product.quantity_in_stock, item.quantity)
 
+            previous_qty = product.quantity_in_stock
             product.quantity_in_stock -= item.quantity
+            check_stock_thresholds(db, product, previous_qty)
             line_subtotal = product.selling_price * item.quantity
             subtotal += line_subtotal
 
@@ -99,14 +102,36 @@ def get_sale(db: Session, sale_id: int) -> Sale:
     return sale
 
 
-def list_sales(db: Session, *, skip: int = 0, limit: int = 50) -> list[Sale]:
-    stmt = (
-        select(Sale)
-        .options(selectinload(Sale.items).selectinload(SaleItem.product))
-        .order_by(Sale.sale_date.desc())
-        .offset(skip)
-        .limit(limit)
-    )
+def list_sales(
+    db: Session,
+    *,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    cashier_id: int | None = None,
+    stock_id: int | None = None,
+    status: SaleStatus | None = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> list[Sale]:
+    stmt = select(Sale).options(selectinload(Sale.items).selectinload(SaleItem.product))
+
+    if start_date is not None:
+        stmt = stmt.where(Sale.sale_date >= start_date)
+    if end_date is not None:
+        stmt = stmt.where(Sale.sale_date <= end_date)
+    if cashier_id is not None:
+        stmt = stmt.where(Sale.cashier_id == cashier_id)
+    if status is not None:
+        stmt = stmt.where(Sale.status == status)
+    if stock_id is not None:
+        matching_sale_ids = (
+            select(SaleItem.sale_id).join(Product, Product.id == SaleItem.product_id).where(
+                Product.stock_id == stock_id
+            )
+        )
+        stmt = stmt.where(Sale.id.in_(matching_sale_ids))
+
+    stmt = stmt.order_by(Sale.sale_date.desc()).offset(skip).limit(limit)
     return list(db.execute(stmt).scalars().all())
 
 
